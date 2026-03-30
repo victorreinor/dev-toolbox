@@ -1,0 +1,4 @@
+- [ ] Criar uma ferramenta para remover linhas duplicadas de um texto, pode ser texto colado ou via upload;
+- [ ] Criar uma ferramenta uma listagem em ordem alfabetica, pode ter por um texto colado ou upload;
+- [ ] Uma ferramenta para deixar o SQL bonito um beutifur SQL (algo assim);
+- [ ] Merge em 2 json (pensar como fazer, visualizacao);
