@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Purpose & Core Principle
+
+DevUtils is a pack of everyday tools for developers — fast, local, and non-blocking. The product promise is: **upload large files or large text blobs and get instant results without freezing the browser.**
+
+**This is a hard architectural constraint:** any feature that processes data (parsing, converting, transforming, validating, generating) MUST run off the main thread. Never process files or large strings synchronously on the main thread.
+
+### Mandatory rules for every new tool
+
+1. **File uploads → Web Worker.** Any tool that accepts file input must offload parsing/processing to a dedicated worker in `src/workers/`. Use `useWorker.ts` as the abstraction.
+2. **Large text/string input → Web Worker.** If a tool processes text that could realistically exceed ~50 KB (JSON, SQL, CSV, logs, etc.), the transformation logic belongs in a worker, not in a React component or a plain `processor.ts` called on the main thread.
+3. **File reading → `useFileStream.ts`.** Read files in 2 MB chunks; never load the entire binary into memory at once.
+4. **UI stays responsive.** Progress indicators must be shown while a worker is running. The user should never experience a frozen tab.
+5. **No server round-trips.** All processing is client-side. No data leaves the device.
+
 ## Commands
 
 ```bash
@@ -39,6 +53,8 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `xlsxParser.worker.ts` — SheetJS for XLSX operations
 
 `useWorker.ts` is the generic abstraction over the worker lifecycle. `useFileStream.ts` reads files in 2MB chunks to avoid blocking the UI.
+
+**When adding a new tool:** if it handles file input OR text that can grow large, create a new `src/workers/<tool-id>.worker.ts` and wire it through `useWorker`. Do not inline heavy logic in the component or call it synchronously from `processor.ts`.
 
 ### Key Shared Components
 
