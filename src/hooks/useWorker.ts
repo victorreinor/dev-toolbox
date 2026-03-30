@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 
 type WorkerFactory = () => Worker
 
@@ -16,8 +16,10 @@ export function useWorker<TIn, TOut>(
   // without needing to re-register listeners on every render.
   const onMessageRef = useRef(opts.onMessage)
   const onErrorRef = useRef(opts.onError)
-  onMessageRef.current = opts.onMessage
-  onErrorRef.current = opts.onError
+  useLayoutEffect(() => {
+    onMessageRef.current = opts.onMessage
+    onErrorRef.current = opts.onError
+  })
 
   useEffect(() => {
     const worker = factory()

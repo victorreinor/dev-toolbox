@@ -231,7 +231,7 @@ function CalcTab() {
 }
 
 function TimestampTab() {
-  const [tsInput, setTsInput] = useState(String(Math.floor(Date.now() / 1000)))
+  const [tsInput, setTsInput] = useState(() => String(Math.floor(Date.now() / 1000)))
   const [tsUnit, setTsUnit] = useState<'s' | 'ms'>('s')
   const [dateInput, setDateInput] = useState(toLocalDatetimeString(new Date()))
   const { copy, copied } = useCopyToClipboard()

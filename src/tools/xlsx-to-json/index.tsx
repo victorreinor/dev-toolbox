@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -46,12 +46,12 @@ export default function XlsxToJson() {
     post({ type: 'read', buffer: buf, options: { sheetIndex: idx, header, inferTypes } })
   }
 
-  const handleFile = useCallback((f: File) => {
+  const handleFile = (f: File) => {
     setFile(f)
     setSheetNames([])
     setJsonOutput('')
     postRead(f, 0)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   const { draggingOver } = usePageDrop({ accept: ['.xlsx', '.xls'], onFile: handleFile })
 

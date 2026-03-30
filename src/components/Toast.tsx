@@ -39,7 +39,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    return () => { Object.values(timers.current).forEach(clearTimeout) }
+    const t = timers.current
+    return () => { Object.values(t).forEach(clearTimeout) }
   }, [])
 
   const remove = (id: string) => {

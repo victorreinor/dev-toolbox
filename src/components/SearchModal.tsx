@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ArrowRight, Star } from 'lucide-react'
 import { searchTools } from '../registry'
@@ -15,22 +15,25 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [prevOpen, setPrevOpen] = useState(open)
+
+  if (prevOpen !== open) {
+    setPrevOpen(open)
+    if (open) {
+      setQuery('')
+      setActive(0)
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
 
   const favorites = loadFavorites()
   const raw = searchTools(query)
   const results = query
     ? raw
     : [...raw.filter(t => favorites.has(t.id)), ...raw.filter(t => !favorites.has(t.id))]
-
-  useEffect(() => {
-    if (open) {
-      setQuery('')
-      setActive(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [open])
-
-  useEffect(() => { setActive(0) }, [query])
 
   const select = useCallback((tool: ToolMeta) => {
     navigate(`/tools/${tool.id}`)
@@ -54,7 +57,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           <input
             ref={inputRef}
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => { setQuery(e.target.value); setActive(0) }}
             placeholder="Buscar ferramenta…"
             style={inputStyle}
           />
