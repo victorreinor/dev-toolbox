@@ -1,0 +1,34 @@
+import type { ToolMeta } from './types'
+import jsonToXlsx from './tools/json-to-xlsx/meta'
+import jsonToCsv from './tools/json-to-csv/meta'
+import csvToJson from './tools/csv-to-json/meta'
+import xlsxToJson from './tools/xlsx-to-json/meta'
+import xlsxToCsv from './tools/xlsx-to-csv/meta'
+import jsonToSql from './tools/json-to-sql/meta'
+import cpfGenerator from './tools/cpf-generator/meta'
+import cnpjGenerator from './tools/cnpj-generator/meta'
+
+export const registry: ToolMeta[] = [
+  jsonToXlsx,
+  jsonToCsv,
+  csvToJson,
+  xlsxToJson,
+  xlsxToCsv,
+  jsonToSql,
+  cpfGenerator,
+  cnpjGenerator,
+]
+
+export function getToolById(id: string): ToolMeta | undefined {
+  return registry.find(t => t.id === id)
+}
+
+export function searchTools(query: string): ToolMeta[] {
+  const q = query.toLowerCase().trim()
+  if (!q) return registry
+  return registry.filter(t =>
+    t.name.toLowerCase().includes(q) ||
+    t.description.toLowerCase().includes(q) ||
+    t.keywords.some(k => k.toLowerCase().includes(q))
+  )
+}
