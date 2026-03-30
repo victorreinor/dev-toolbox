@@ -1,0 +1,97 @@
+name: Bug Report
+description: Reporte um bug ou comportamento inesperado
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar um bug! Preencha as informações abaixo para nos ajudar a reproduzir e corrigir o problema.
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Ferramenta afetada
+      description: Qual ferramenta apresentou o problema?
+      options:
+        - JSON → CSV
+        - JSON → XLSX
+        - JSON → SQL
+        - CSV → JSON
+        - XLSX → JSON
+        - XLSX → CSV
+        - Gerador de CPF
+        - Gerador de CNPJ
+        - Outra / Interface geral
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do problema
+      description: Descreva o que aconteceu de forma clara e objetiva.
+      placeholder: Ex. Ao converter um arquivo JSON com mais de 10MB, a página trava e não retorna resultado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      description: Lista de passos que levam ao problema.
+      placeholder: |
+        1. Abrir a ferramenta JSON → CSV
+        2. Colar o seguinte JSON: ...
+        3. Clicar em "Converter"
+        4. Observar o erro
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento esperado
+      description: O que deveria ter acontecido?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamento atual
+      description: O que aconteceu de fato?
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_messages
+    attributes:
+      label: Mensagens de erro
+      description: Cole aqui qualquer erro exibido na tela ou no console do navegador (F12 → Console).
+      render: shell
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidências (screenshots, arquivo de entrada)
+      description: |
+        Adicione screenshots, GIFs ou arquivos que ajudem a entender o problema.
+        Para arquivos de entrada (JSON, CSV, XLSX), cole o conteúdo abaixo ou anexe o arquivo.
+      placeholder: Arraste imagens aqui ou cole o conteúdo do arquivo de entrada.
+
+  - type: input
+    id: browser
+    attributes:
+      label: Navegador e versão
+      placeholder: Ex. Chrome 124, Firefox 126, Safari 17
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Sistema operacional
+      placeholder: Ex. macOS 14, Windows 11, Ubuntu 22.04
+    validations:
+      required: true

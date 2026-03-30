@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Search, ChevronLeft, ChevronRight, Terminal } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Terminal, Bug, Lightbulb } from 'lucide-react'
 import { registry } from '../registry'
 import type { ToolCategory } from '../types'
+
+const GITHUB_REPO = 'https://github.com/victorreinor/dev-toolbox'
+const BUG_REPORT_URL = `${GITHUB_REPO}/issues/new?template=bug_report.yml`
+const FEATURE_REQUEST_URL = `${GITHUB_REPO}/issues/new?template=feature_request.yml`
 
 const CATEGORY_LABELS: Record<ToolCategory, string> = {
   converter: 'Conversores',
@@ -107,13 +111,58 @@ export function Sidebar({ onSearch }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
-        <div style={footerStyle}>
-          <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-            {registry.length} ferramentas
-          </span>
-        </div>
-      )}
+      <div style={footerStyle}>
+        {!collapsed ? (
+          <>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              <a
+                href={BUG_REPORT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={footerLinkStyle}
+                title="Reportar um bug"
+              >
+                <Bug size={12} />
+                <span>Reportar bug</span>
+              </a>
+              <a
+                href={FEATURE_REQUEST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={footerLinkStyle}
+                title="Sugerir uma ideia"
+              >
+                <Lightbulb size={12} />
+                <span>Nova ideia</span>
+              </a>
+            </div>
+            <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+              {registry.length} ferramentas
+            </span>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+            <a
+              href={BUG_REPORT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={iconFooterLinkStyle}
+              title="Reportar bug"
+            >
+              <Bug size={13} />
+            </a>
+            <a
+              href={FEATURE_REQUEST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={iconFooterLinkStyle}
+              title="Nova ideia"
+            >
+              <Lightbulb size={13} />
+            </a>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }
@@ -229,4 +278,31 @@ const kbdStyle: React.CSSProperties = {
 const footerStyle: React.CSSProperties = {
   padding: '10px 12px',
   borderTop: '1px solid var(--border)',
+}
+
+const footerLinkStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 4,
+  padding: '4px 6px',
+  fontSize: 10,
+  fontFamily: 'var(--font-mono)',
+  color: 'var(--text-dim)',
+  border: '1px solid var(--border)',
+  borderRadius: 2,
+  textDecoration: 'none',
+  transition: 'color var(--tr), border-color var(--tr)',
+  whiteSpace: 'nowrap',
+}
+
+const iconFooterLinkStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '5px',
+  color: 'var(--text-dim)',
+  borderRadius: 2,
+  transition: 'color var(--tr)',
 }
