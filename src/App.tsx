@@ -1,11 +1,60 @@
 import { Suspense, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
+import { Star } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
 import { SearchModal } from './components/SearchModal'
 import { ToastProvider } from './components/Toast'
 import { getToolById, registry } from './registry'
+import { useFavorites } from './hooks/useFavorites'
+import type { ToolMeta } from './types'
+
+function ToolCard({ tool, isFavorite, onToggleFavorite }: { tool: ToolMeta; isFavorite: boolean; onToggleFavorite: (id: string) => void }) {
+  return (
+    <div style={{ position: 'relative', height: '100%' }}>
+      <Link to={`/tools/${tool.id}`} className="home-card" style={{ paddingRight: 40, height: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+            {tool.name}
+          </span>
+          <span className={`badge ${tool.category}`}>{tool.category}</span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          {tool.description}
+        </p>
+      </Link>
+      <button
+        onClick={e => { e.preventDefault(); onToggleFavorite(tool.id) }}
+        title={isFavorite ? 'Remover dos atalhos' : 'Fixar nos atalhos'}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 4,
+          borderRadius: 'var(--radius)',
+          color: isFavorite ? 'var(--warning)' : 'var(--text-dim)',
+          transition: 'color var(--tr)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onMouseEnter={e => { if (!isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+        onMouseLeave={e => { if (!isFavorite) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-dim)' }}
+      >
+        <Star size={14} fill={isFavorite ? 'var(--warning)' : 'none'} />
+      </button>
+    </div>
+  )
+}
 
 function Home() {
+  const { favorites, toggle } = useFavorites()
+
+  const pinnedTools = registry.filter(t => favorites.has(t.id))
+  const allTools = registry
+
   return (
     <div style={homeStyle}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', marginBottom: 24 }}>
@@ -13,23 +62,32 @@ function Home() {
       </div>
       <h1 style={homeTitleStyle}>DevUtils</h1>
       <p style={homeSubStyle}>Ferramentas de dev, sem servidor, sem frescura.</p>
+
+      {pinnedTools.length > 0 && (
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Star size={13} fill="var(--warning)" color="var(--warning)" />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Atalhos
+            </span>
+          </div>
+          <div style={homeGridStyle}>
+            {pinnedTools.map(tool => (
+              <ToolCard key={tool.id} tool={tool} isFavorite={true} onToggleFavorite={toggle} />
+            ))}
+          </div>
+          <div style={{ marginTop: 32, marginBottom: 16, borderTop: '1px solid var(--border)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Todas as ferramentas
+            </span>
+          </div>
+        </section>
+      )}
+
       <div style={homeGridStyle}>
-        {registry.map(tool => (
-          <Link
-            key={tool.id}
-            to={`/tools/${tool.id}`}
-            className="home-card"
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-              <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                {tool.name}
-              </span>
-              <span className={`badge ${tool.category}`}>{tool.category}</span>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              {tool.description}
-            </p>
-          </Link>
+        {allTools.map(tool => (
+          <ToolCard key={tool.id} tool={tool} isFavorite={favorites.has(tool.id)} onToggleFavorite={toggle} />
         ))}
       </div>
     </div>
@@ -130,4 +188,3 @@ const homeGridStyle: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
   gap: 12,
 }
-

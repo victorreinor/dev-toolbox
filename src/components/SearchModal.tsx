@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, ArrowRight } from 'lucide-react'
+import { Search, ArrowRight, Star } from 'lucide-react'
 import { searchTools } from '../registry'
+import { loadFavorites } from '../hooks/useFavorites'
 import type { ToolMeta } from '../types'
 
 interface SearchModalProps {
@@ -14,7 +15,12 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const results = searchTools(query)
+
+  const favorites = loadFavorites()
+  const raw = searchTools(query)
+  const results = query
+    ? raw
+    : [...raw.filter(t => favorites.has(t.id)), ...raw.filter(t => !favorites.has(t.id))]
 
   useEffect(() => {
     if (open) {
@@ -58,25 +64,43 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         <div style={listStyle}>
           {results.length === 0 ? (
             <div style={emptyStyle}>Nenhuma ferramenta encontrada</div>
-          ) : results.map((tool, i) => (
-            <button
-              key={tool.id}
-              style={itemStyle(i === active)}
-              onClick={() => select(tool)}
-              onMouseEnter={() => setActive(i)}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, textAlign: 'left' }}>
-                <span className="mono" style={{ fontSize: 13, color: i === active ? 'var(--accent)' : 'var(--text)' }}>
-                  {tool.name}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tool.description}</span>
+          ) : results.map((tool, i) => {
+            const isFav = favorites.has(tool.id)
+            const prevIsFav = i > 0 && favorites.has(results[i - 1].id)
+            const showFavHeader  = !query && i === 0 && isFav
+            const showAllHeader  = !query && !isFav && (i === 0 || prevIsFav) && favorites.size > 0
+
+            return (
+              <div key={tool.id}>
+                {showFavHeader && (
+                  <div style={sectionLabelStyle}>
+                    <Star size={10} fill="var(--warning)" color="var(--warning)" />
+                    Atalhos
+                  </div>
+                )}
+                {showAllHeader && (
+                  <div style={sectionLabelStyle}>Todas as ferramentas</div>
+                )}
+                <button
+                  style={itemStyle(i === active)}
+                  onClick={() => select(tool)}
+                  onMouseEnter={() => setActive(i)}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, textAlign: 'left' }}>
+                    <span className="mono" style={{ fontSize: 13, color: i === active ? 'var(--accent)' : 'var(--text)' }}>
+                      {tool.name}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tool.description}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isFav && <Star size={11} fill="var(--warning)" color="var(--warning)" />}
+                    <span className={`badge ${tool.category}`}>{tool.category}</span>
+                    {i === active && <ArrowRight size={13} color="var(--accent)" />}
+                  </div>
+                </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className={`badge ${tool.category}`}>{tool.category}</span>
-                {i === active && <ArrowRight size={13} color="var(--accent)" />}
-              </div>
-            </button>
-          ))}
+            )
+          })}
         </div>
         <div style={footerStyle}>
           <span>↑↓ navegar</span>
@@ -141,6 +165,21 @@ function itemStyle(active: boolean): React.CSSProperties {
     transition: 'background var(--tr)',
     cursor: 'pointer',
   }
+}
+
+const sectionLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 14px 4px',
+  fontSize: 10,
+  fontFamily: 'var(--font-mono)',
+  fontWeight: 600,
+  color: 'var(--text-muted)',
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  background: 'var(--surface-2)',
+  borderBottom: '1px solid var(--border)',
 }
 
 const footerStyle: React.CSSProperties = {
