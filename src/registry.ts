@@ -7,6 +7,7 @@ import xlsxToCsv from './tools/xlsx-to-csv/meta'
 import jsonToSql from './tools/json-to-sql/meta'
 import cpfGenerator from './tools/cpf-generator/meta'
 import cnpjGenerator from './tools/cnpj-generator/meta'
+import jsonToJsObject from './tools/json-to-js-object/meta'
 
 export const registry: ToolMeta[] = [
   jsonToXlsx,
@@ -17,6 +18,7 @@ export const registry: ToolMeta[] = [
   jsonToSql,
   cpfGenerator,
   cnpjGenerator,
+  jsonToJsObject,
 ]
 
 export function getToolById(id: string): ToolMeta | undefined {
