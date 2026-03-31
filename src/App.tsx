@@ -1,17 +1,18 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { Star, GripVertical } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
 import { SearchModal } from './components/SearchModal'
 import { ToastProvider } from './components/Toast'
 import { getToolById, registry } from './registry'
 import { useFavorites } from './hooks/useFavorites'
+import { useCardOrder } from './hooks/useCardOrder'
 import type { ToolMeta } from './types'
 
 function ToolCard({ tool, isFavorite, onToggleFavorite }: { tool: ToolMeta; isFavorite: boolean; onToggleFavorite: (id: string) => void }) {
   return (
     <div style={{ position: 'relative', height: '100%' }}>
-      <Link to={`/tools/${tool.id}`} className="home-card" style={{ paddingRight: 40, height: '100%' }}>
+      <Link to={`/tools/${tool.id}`} draggable={false} className="home-card" style={{ paddingRight: 40, height: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
           <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
             {tool.name}
@@ -49,11 +50,103 @@ function ToolCard({ tool, isFavorite, onToggleFavorite }: { tool: ToolMeta; isFa
   )
 }
 
+function DraggableGrid({
+  tools,
+  favorites,
+  onToggleFavorite,
+  onReorder,
+}: {
+  tools: ToolMeta[]
+  favorites: Set<string>
+  onToggleFavorite: (id: string) => void
+  onReorder: (from: number, to: number) => void
+}) {
+  const drag = useRef<{ id: string | null; overId: string | null }>({ id: null, overId: null })
+  const els = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  const cls = (id: string | null, name: string, on: boolean) =>
+    id && els.current.get(id)?.classList.toggle(name, on)
+
+  const cleanup = () => {
+    cls(drag.current.id, 'is-dragging', false)
+    cls(drag.current.overId, 'is-over', false)
+    drag.current = { id: null, overId: null }
+  }
+
+  return (
+    <div style={homeGridStyle}>
+      {tools.map(tool => (
+        <div
+          key={tool.id}
+          ref={el => { if (el) els.current.set(tool.id, el); else els.current.delete(tool.id) }}
+          draggable
+          className="drag-wrapper"
+          style={{ position: 'relative' }}
+          onDragStart={e => {
+            e.dataTransfer.effectAllowed = 'move'
+            drag.current.id = tool.id
+            // Delay until after browser captures the drag ghost image
+            requestAnimationFrame(() => cls(tool.id, 'is-dragging', true))
+          }}
+          onDragEnter={e => {
+            e.preventDefault()
+            const { id, overId } = drag.current
+            if (!id || tool.id === id || tool.id === overId) return
+            cls(overId, 'is-over', false)
+            drag.current.overId = tool.id
+            cls(tool.id, 'is-over', true)
+          }}
+          onDragOver={e => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+          }}
+          onDragLeave={e => {
+            if (drag.current.overId !== tool.id) return
+            if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return
+            cls(tool.id, 'is-over', false)
+            drag.current.overId = null
+          }}
+          onDrop={e => {
+            e.preventDefault()
+            const fromId = drag.current.id
+            if (fromId && fromId !== tool.id) {
+              const from = tools.findIndex(t => t.id === fromId)
+              const to = tools.findIndex(t => t.id === tool.id)
+              if (from !== -1 && to !== -1) onReorder(from, to)
+            }
+            cleanup()
+          }}
+          onDragEnd={cleanup}
+        >
+          <span className="drag-handle">
+            <GripVertical size={12} />
+          </span>
+          <ToolCard tool={tool} isFavorite={favorites.has(tool.id)} onToggleFavorite={onToggleFavorite} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Home() {
   const { favorites, toggle } = useFavorites()
 
-  const pinnedTools = registry.filter(t => favorites.has(t.id))
-  const allTools = registry
+  const pinnedIds = useMemo(
+    () => registry.filter(t => favorites.has(t.id)).map(t => t.id),
+    [favorites]
+  )
+
+  const { allOrder, pinnedOrder, reorderAll, reorderPinned } = useCardOrder(pinnedIds)
+
+  const pinnedTools = useMemo(
+    () => pinnedOrder.map(id => registry.find(t => t.id === id)!).filter(Boolean),
+    [pinnedOrder]
+  )
+
+  const allTools = useMemo(
+    () => allOrder.map(id => registry.find(t => t.id === id)!).filter(Boolean),
+    [allOrder]
+  )
 
   return (
     <div style={homeStyle}>
@@ -71,11 +164,12 @@ function Home() {
               Atalhos
             </span>
           </div>
-          <div style={homeGridStyle}>
-            {pinnedTools.map(tool => (
-              <ToolCard key={tool.id} tool={tool} isFavorite={true} onToggleFavorite={toggle} />
-            ))}
-          </div>
+          <DraggableGrid
+            tools={pinnedTools}
+            favorites={favorites}
+            onToggleFavorite={toggle}
+            onReorder={reorderPinned}
+          />
           <div style={{ marginTop: 32, marginBottom: 16, borderTop: '1px solid var(--border)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -85,11 +179,12 @@ function Home() {
         </section>
       )}
 
-      <div style={homeGridStyle}>
-        {allTools.map(tool => (
-          <ToolCard key={tool.id} tool={tool} isFavorite={favorites.has(tool.id)} onToggleFavorite={toggle} />
-        ))}
-      </div>
+      <DraggableGrid
+        tools={allTools}
+        favorites={favorites}
+        onToggleFavorite={toggle}
+        onReorder={reorderAll}
+      />
     </div>
   )
 }

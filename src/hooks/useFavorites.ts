@@ -1,18 +1,14 @@
 import { useState } from 'react'
+import { loadJSON, saveJSON } from './storage'
 
 export const FAVORITES_KEY = 'devutils:favorites'
 
 export function loadFavorites(): Set<string> {
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY)
-    return new Set(raw ? JSON.parse(raw) : [])
-  } catch {
-    return new Set()
-  }
+  return new Set(loadJSON<string[]>(FAVORITES_KEY, []))
 }
 
 function saveFavorites(ids: Set<string>) {
-  localStorage.setItem(FAVORITES_KEY, JSON.stringify([...ids]))
+  saveJSON(FAVORITES_KEY, [...ids])
 }
 
 export function useFavorites() {
