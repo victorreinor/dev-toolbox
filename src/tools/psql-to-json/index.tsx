@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
@@ -27,13 +27,23 @@ const MODE_LABELS: Record<DisplayMode, string> = {
   expanded: '\\x on (expandido)',
 }
 
+function toJsObject(data: Record<string, string | null>[]): string {
+  return JSON.stringify(data, null, 2).replace(/"([a-zA-Z_$][a-zA-Z0-9_$]*)"\s*:/g, '$1:')
+}
+
 export default function PsqlToJson() {
   const { toast } = useToast()
   const [input, setInput] = useState('')
-  const [jsonOutput, setJsonOutput] = useState('')
+  const [parsedData, setParsedData] = useState<Record<string, string | null>[] | null>(null)
   const [mode, setMode] = useState<DisplayMode>('auto')
   const [nullEmpty, setNullEmpty] = useState(true)
+  const [jsObject, setJsObject] = useState(false)
   const [processing, setProcessing] = useState(false)
+
+  const output = useMemo(() => {
+    if (!parsedData) return ''
+    return jsObject ? toJsObject(parsedData) : JSON.stringify(parsedData, null, 2)
+  }, [parsedData, jsObject])
 
   const { post } = useWorker<WorkerRequest, WorkerResponse>(
     () => new Worker(new URL('../../workers/psqlParser.worker.ts', import.meta.url), { type: 'module' }),
@@ -44,8 +54,7 @@ export default function PsqlToJson() {
           toast(res.error ?? 'Erro ao processar', 'error')
           return
         }
-        const json = JSON.stringify(res.data, null, 2)
-        setJsonOutput(json)
+        setParsedData(res.data ?? [])
         const count = res.data?.length ?? 0
         const detected = res.detectedMode === 'expanded' ? '\\x on' : '\\x off'
         toast(`${count} registro(s) convertido(s) · ${detected}`, 'success')
@@ -90,6 +99,10 @@ export default function PsqlToJson() {
           <input type="checkbox" checked={nullEmpty} onChange={e => setNullEmpty(e.target.checked)} />
           Converter campos vazios em null
         </label>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={jsObject} onChange={e => setJsObject(e.target.checked)} />
+          Saída como JavaScript Object
+        </label>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
@@ -97,15 +110,15 @@ export default function PsqlToJson() {
           {processing ? 'Convertendo…' : 'Converter'}
         </button>
         <OutputActions
-          data={jsonOutput}
-          filename="output.json"
-          mimeType="application/json"
-          onClear={() => { setJsonOutput(''); setInput('') }}
+          data={output}
+          filename={jsObject ? 'output.js' : 'output.json'}
+          mimeType={jsObject ? 'text/javascript' : 'application/json'}
+          onClear={() => { setParsedData(null); setInput('') }}
         />
       </div>
 
-      {jsonOutput && (
-        <CodeEditor value={jsonOutput} readOnly label="JSON" minHeight={220} />
+      {output && (
+        <CodeEditor value={output} readOnly label={jsObject ? 'JavaScript Object' : 'JSON'} minHeight={220} />
       )}
     </ToolLayout>
   )
