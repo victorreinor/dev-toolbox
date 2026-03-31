@@ -15,9 +15,11 @@ import uuidGenerator from './tools/uuid-generator/meta'
 import passwordGenerator from './tools/password-generator/meta'
 import dateUtils from './tools/date-utils/meta'
 import dedupLines from './tools/dedup-lines/meta'
+import cronParser from './tools/cron-parser/meta'
 
 export const registry: ToolMeta[] = [
   psqlToJson,
+  cronParser,
   dedupLines,
   markdownPreview,
   uuidGenerator,
