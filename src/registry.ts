@@ -1,4 +1,5 @@
 import type { ToolMeta } from './types'
+import psqlToJson from './tools/psql-to-json/meta'
 import jsonToXlsx from './tools/json-to-xlsx/meta'
 import jsonToCsv from './tools/json-to-csv/meta'
 import csvToJson from './tools/csv-to-json/meta'
@@ -15,6 +16,7 @@ import passwordGenerator from './tools/password-generator/meta'
 import dateUtils from './tools/date-utils/meta'
 
 export const registry: ToolMeta[] = [
+  psqlToJson,
   markdownPreview,
   uuidGenerator,
   passwordGenerator,
