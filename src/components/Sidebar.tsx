@@ -50,12 +50,16 @@ export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
       {/* Logo */}
       <div style={logoAreaStyle}>
         {!collapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NavLink to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
             <Terminal size={16} color="var(--accent)" />
             <span style={logoStyle}>DevUtils</span>
-          </div>
+          </NavLink>
         )}
-        {collapsed && <Terminal size={16} color="var(--accent)" />}
+        {collapsed && (
+          <NavLink to="/" style={{ display: 'flex' }}>
+            <Terminal size={16} color="var(--accent)" />
+          </NavLink>
+        )}
         <button
           onClick={() => setCollapsed(c => !c)}
           style={collapseBtn}
