@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useLayoutEffect } from 'react'
+import { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ArrowRight, Star } from 'lucide-react'
 import { searchTools } from '../registry'
@@ -15,6 +15,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const activeItemRef = useRef<HTMLButtonElement>(null)
   const [prevOpen, setPrevOpen] = useState(open)
 
   if (prevOpen !== open) {
@@ -28,6 +29,10 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   useLayoutEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50)
   }, [open])
+
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [active])
 
   const favorites = loadFavorites()
   const raw = searchTools(query)
@@ -85,6 +90,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                   <div style={sectionLabelStyle}>Todas as ferramentas</div>
                 )}
                 <button
+                  ref={i === active ? activeItemRef : null}
                   style={itemStyle(i === active)}
                   onClick={() => select(tool)}
                   onMouseEnter={() => setActive(i)}
