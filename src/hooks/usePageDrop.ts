@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useToast } from '../components/Toast'
+import { matchesAccept } from '../utils/fileAccept'
 
 interface UsePageDropOptions {
   accept: string[]
@@ -6,16 +8,10 @@ interface UsePageDropOptions {
   disabled?: boolean
 }
 
-function matchesAccept(file: File, accept: string[]): boolean {
-  return accept.some(type => {
-    if (type.startsWith('.')) return file.name.toLowerCase().endsWith(type.toLowerCase())
-    return file.type.startsWith(type.replace('*', ''))
-  })
-}
-
 export function usePageDrop({ accept, onFile, disabled = false }: UsePageDropOptions) {
   const [draggingOver, setDraggingOver] = useState(false)
   const counter = useRef(0)
+  const { toast } = useToast()
 
   const handleDragEnter = useCallback((e: DragEvent) => {
     if (!e.dataTransfer?.types.includes('Files')) return
@@ -40,8 +36,13 @@ export function usePageDrop({ accept, onFile, disabled = false }: UsePageDropOpt
     counter.current = 0
     setDraggingOver(false)
     const file = e.dataTransfer?.files[0]
-    if (file && matchesAccept(file, accept)) onFile(file)
-  }, [accept, onFile])
+    if (!file) return
+    if (!matchesAccept(file, accept)) {
+      toast(`Formato inválido. Somente ${accept.join(', ')} são aceitos.`, 'error')
+      return
+    }
+    onFile(file)
+  }, [accept, onFile, toast])
 
   useEffect(() => {
     if (disabled) return

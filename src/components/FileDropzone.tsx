@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, type DragEvent, type ChangeEvent } from 'react'
 import { Upload, FileText, X } from 'lucide-react'
+import { useToast } from './Toast'
+import { matchesAccept } from '../utils/fileAccept'
 
 type DropzoneState = 'idle' | 'dragging' | 'processing' | 'done' | 'error'
 
@@ -24,14 +26,19 @@ export function FileDropzone({
 }: FileDropzoneProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   const handleFile = useCallback((file: File) => {
+    if (!matchesAccept(file, accept)) {
+      toast(`Formato inválido. Somente ${accept} são aceitos.`, 'error')
+      return
+    }
     if (maxMB && file.size > maxMB * 1024 * 1024) {
-      alert(`Arquivo muito grande. Máximo: ${maxMB}MB`)
+      toast(`Arquivo muito grande. Máximo: ${maxMB}MB`, 'error')
       return
     }
     onFile(file)
-  }, [onFile, maxMB])
+  }, [onFile, accept, maxMB, toast])
 
   const onDrop = useCallback((e: DragEvent) => {
     e.preventDefault()
