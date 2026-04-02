@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Search, ChevronLeft, ChevronRight, Terminal, Bug, Lightbulb } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Terminal, Bug, Lightbulb, Sun, Moon } from 'lucide-react'
 import { registry } from '../registry'
 import type { ToolCategory } from '../types'
 
@@ -19,9 +19,11 @@ const CATEGORY_ORDER: ToolCategory[] = ['converter', 'generator', 'formatter', '
 
 interface SidebarProps {
   onSearch: () => void
+  theme: 'dark' | 'light'
+  onToggleTheme: () => void
 }
 
-export function Sidebar({ onSearch }: SidebarProps) {
+export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   // Group tools by category
@@ -136,9 +138,18 @@ export function Sidebar({ onSearch }: SidebarProps) {
                 <span>Nova ideia</span>
               </a>
             </div>
-            <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-              {registry.length} ferramentas
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                {registry.length} ferramentas
+              </span>
+              <button
+                onClick={onToggleTheme}
+                style={themeToggleStyle}
+                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+              >
+                {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+              </button>
+            </div>
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
@@ -160,6 +171,13 @@ export function Sidebar({ onSearch }: SidebarProps) {
             >
               <Lightbulb size={13} />
             </a>
+            <button
+              onClick={onToggleTheme}
+              style={{ ...iconFooterLinkStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+              title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+            >
+              {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+            </button>
           </div>
         )}
       </div>
@@ -305,4 +323,17 @@ const iconFooterLinkStyle: React.CSSProperties = {
   color: 'var(--text-dim)',
   borderRadius: 2,
   transition: 'color var(--tr)',
+}
+
+const themeToggleStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '3px 5px',
+  background: 'none',
+  border: '1px solid var(--border)',
+  borderRadius: 2,
+  color: 'var(--text-dim)',
+  cursor: 'pointer',
+  transition: 'color var(--tr), border-color var(--tr)',
 }

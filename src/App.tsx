@@ -1,4 +1,4 @@
-import { Suspense, useState, useMemo, useRef } from 'react'
+import { Suspense, useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, Link } from 'react-router-dom'
 import { Star, GripVertical } from 'lucide-react'
 import { Sidebar } from './components/Sidebar'
@@ -217,10 +217,22 @@ function ToolPage() {
 
 function Layout() {
   const [searchOpen, setSearchOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => (t === 'dark' ? 'light' : 'dark'))
+  }, [])
 
   return (
     <div style={layoutStyle}>
-      <Sidebar onSearch={() => setSearchOpen(true)} />
+      <Sidebar onSearch={() => setSearchOpen(true)} theme={theme} onToggleTheme={toggleTheme} />
       <main style={mainStyle}>
         <Routes>
           <Route path="/" element={<Home />} />
