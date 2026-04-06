@@ -428,6 +428,11 @@ a {
   background: var(--accent-dim);
 }
 
+.sidebar-nav-link:hover {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+}
+
 /* Draggable card wrapper */
 .drag-wrapper {
   cursor: grab;

@@ -100,6 +100,7 @@ export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
               <NavLink
                 key={tool.id}
                 to={`/tools/${tool.id}`}
+                className="sidebar-nav-link"
                 style={({ isActive }) => navLinkStyle(isActive, collapsed)}
                 title={collapsed ? tool.name : undefined}
               >
