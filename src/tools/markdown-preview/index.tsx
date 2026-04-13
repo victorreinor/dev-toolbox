@@ -1,5 +1,7 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { marked } from 'marked'
+import mermaid from 'mermaid'
+import hljs from 'highlight.js/lib/common'
 import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
@@ -18,6 +20,14 @@ function slugify(text: string): string {
     .replace(/[^\p{L}\p{N}-]/gu, '')
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 const ACCEPT = ['.md', '.txt', '.markdown']
 
 marked.setOptions({ gfm: true, breaks: true })
@@ -27,6 +37,26 @@ marked.use({
       const html = this.parser.parseInline(tokens)
       const id = slugify(text)
       return `<h${depth} id="${id}">${html}</h${depth}>\n`
+    },
+    code({ text, lang }) {
+      if (lang === 'mermaid') {
+        // Encode the raw code in a data attribute to avoid any HTML entity issues
+        return `<div class="mermaid-block" data-code="${encodeURIComponent(text)}"></div>`
+      }
+      let highlighted = escapeHtml(text)
+      const resolvedLang = lang ? hljs.getLanguage(lang) : null
+      if (lang && resolvedLang) {
+        try {
+          highlighted = hljs.highlight(text, { language: lang, ignoreIllegals: true }).value
+        } catch {}
+      } else if (!lang) {
+        try {
+          highlighted = hljs.highlightAuto(text).value
+        } catch {}
+      }
+      const langAttr = lang ? ` class="language-${lang}"` : ''
+      const langLabel = lang ? `<span class="code-block-lang">${escapeHtml(lang)}</span>` : ''
+      return `<div class="code-block-wrapper">${langLabel}<pre><code class="hljs"${langAttr}>${highlighted}</code></pre></div>`
     },
   },
 })
@@ -46,7 +76,7 @@ Bem-vindo ao editor de markdown do **DevUtils**. Edite este texto para ver a pr�
 
 **Negrito**, _itálico_, ~~tachado~~ e \`código inline\`.
 
-### Blocos de código
+### Blocos de código com syntax highlight
 
 \`\`\`typescript
 interface User {
@@ -57,6 +87,26 @@ interface User {
 
 const greet = (user: User) => \`Olá, \${user.name}!\`
 \`\`\`
+
+### Fluxograma (Mermaid)
+
+\`\`\`mermaid
+flowchart TD
+    A[Início] --> B{Tem arquivo?}
+    B -- Sim --> C[Processa arquivo]
+    B -- Não --> D[Mostra erro]
+    C --> E[Exibe resultado]
+    D --> E
+    E --> F[Fim]
+\`\`\`
+
+### Task list
+
+- [x] Suporte a **negrito** e _itálico_
+- [x] Tabelas GFM
+- [x] Syntax highlighting
+- [x] Diagramas Mermaid
+- [ ] Mais features incríveis
 
 ### Tabela
 
@@ -76,7 +126,7 @@ const greet = (user: User) => \`Olá, \${user.name}!\`
 Feito com ♥ no **DevUtils** — ferramentas de dev, sem servidor, sem frescura.
 `
 
-function buildPrintHTML(html: string, title: string): string {
+function buildPrintHTML(bodyHTML: string, title: string): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -167,13 +217,10 @@ function buildPrintHTML(html: string, title: string): string {
     margin: 1.5em 0;
   }
   img { max-width: 100%; height: auto; }
+  svg { max-width: 100%; }
+  .mermaid-block { text-align: center; margin: 1.2em 0; }
   @page {
     margin: 1.5cm;
-    @top-left { content: none; }
-    @top-center { content: none; }
-    @top-right { content: none; }
-    @bottom-left { content: none; }
-    @bottom-center { content: none; }
     @bottom-right {
       content: counter(page);
       font-family: -apple-system, sans-serif;
@@ -190,7 +237,7 @@ function buildPrintHTML(html: string, title: string): string {
 </style>
 </head>
 <body>
-${html}
+${bodyHTML}
 <script>window.onload = () => { window.print(); }<\/script>
 </body>
 </html>`
@@ -228,9 +275,42 @@ export default function MarkdownPreview() {
     }
   }, [markdown])
 
+  const showPreview = viewMode !== 'editor'
+
+  // Render Mermaid diagrams after each HTML update
+  useEffect(() => {
+    if (!showPreview || !previewRef.current) return
+    const wrappers = Array.from(
+      previewRef.current.querySelectorAll<HTMLElement>('.mermaid-block[data-code]')
+    )
+    if (wrappers.length === 0) return
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light'
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? 'dark' : 'default',
+      securityLevel: 'loose',
+    })
+
+    wrappers.forEach(async (wrapper, index) => {
+      const code = decodeURIComponent(wrapper.getAttribute('data-code') ?? '')
+      if (!code) return
+      const id = `mmd-${index}-${Math.random().toString(36).slice(2)}`
+      try {
+        const { svg } = await mermaid.render(id, code)
+        wrapper.innerHTML = svg
+        wrapper.removeAttribute('data-code')
+      } catch (err) {
+        console.error('[Mermaid]', err)
+      }
+    })
+  }, [html, showPreview])
+
   const handleExportPDF = useCallback(() => {
     const title = fileName ? fileName.replace(/\.[^.]+$/, '') : 'documento'
-    const printHTML = buildPrintHTML(html, title)
+    // Use live DOM so mermaid SVGs are captured in the export
+    const bodyHTML = previewRef.current?.innerHTML ?? html
+    const printHTML = buildPrintHTML(bodyHTML, title)
     const win = window.open('', '_blank')
     if (!win) {
       toast('Permita pop-ups para exportar PDF', 'error')
@@ -253,7 +333,6 @@ export default function MarkdownPreview() {
   const { draggingOver } = usePageDrop({ accept: ACCEPT, onFile: handleFile })
 
   const showEditor = viewMode !== 'preview'
-  const showPreview = viewMode !== 'editor'
 
   return (
     <ToolLayout
