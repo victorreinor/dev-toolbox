@@ -238,7 +238,7 @@ export default function CsvViewer() {
             style={{ overflowX: 'auto', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)', height: CONTAINER_H }}
             onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
           >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+            <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 52, textAlign: 'right', color: 'var(--text-dim)', cursor: 'default' }}>#</th>
