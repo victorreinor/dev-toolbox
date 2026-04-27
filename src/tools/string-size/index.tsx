@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { Copy, Check, AlertTriangle, CheckCircle, XCircle, Minimize2 } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
-import { useToast } from '../../components/Toast'
 
 interface ServiceLimit {
   name: string
@@ -19,24 +18,41 @@ const LIMITS: ServiceLimit[] = [
   { name: 'API Gateway', bytes: 10 * 1024 * 1024, description: 'Body da requisição' },
 ]
 
+const WARN_THRESHOLD = 0.7
+const DANGER_THRESHOLD = 0.9
+
+const COLOR_OK = 'var(--green, #22c55e)'
+const COLOR_WARN = 'var(--yellow, #eab308)'
+const COLOR_ERR = 'var(--red, #ef4444)'
+
+const encoder = new TextEncoder()
+
+type StatusLevel = 'ok' | 'warn' | 'error'
+
+function getStatusLevel(ratio: number): StatusLevel {
+  if (ratio <= WARN_THRESHOLD) return 'ok'
+  if (ratio <= DANGER_THRESHOLD) return 'warn'
+  return 'error'
+}
+
+function statusColor(level: StatusLevel): string {
+  if (level === 'ok') return COLOR_OK
+  if (level === 'warn') return COLOR_WARN
+  return COLOR_ERR
+}
+
+function StatusIcon({ level }: { level: StatusLevel }) {
+  if (level === 'ok') return <CheckCircle size={14} color={COLOR_OK} />
+  if (level === 'warn') return <AlertTriangle size={14} color={COLOR_WARN} />
+  return <XCircle size={14} color={COLOR_ERR} />
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function getStatusColor(ratio: number): string {
-  if (ratio <= 0.7) return 'var(--green, #22c55e)'
-  if (ratio <= 0.9) return 'var(--yellow, #eab308)'
-  return 'var(--red, #ef4444)'
-}
-
-function StatusIcon({ ratio }: { ratio: number }) {
-  if (ratio <= 0.7) return <CheckCircle size={14} color="var(--green, #22c55e)" />
-  if (ratio <= 0.9) return <AlertTriangle size={14} color="var(--yellow, #eab308)" />
-  return <XCircle size={14} color="var(--red, #ef4444)" />
 }
 
 interface SizeInfo {
@@ -46,31 +62,32 @@ interface SizeInfo {
   isMultiByte: boolean
   jsonMinifiedBytes: number | null
   jsonValid: boolean
+  parsedJson: unknown
 }
 
 function analyzeText(text: string): SizeInfo {
-  const encoded = new TextEncoder().encode(text)
-  const bytes = encoded.byteLength
+  const bytes = encoder.encode(text).byteLength
   const chars = text.length
-  const lines = text === '' ? 0 : text.split('\n').length
+  const lines = text === '' ? 0 : (text.match(/\n/g)?.length ?? 0) + 1
   const isMultiByte = bytes !== chars
 
   let jsonMinifiedBytes: number | null = null
   let jsonValid = false
+  let parsedJson: unknown = null
 
   const trimmed = text.trim()
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
-      const parsed = JSON.parse(trimmed)
-      const minified = JSON.stringify(parsed)
-      jsonMinifiedBytes = new TextEncoder().encode(minified).byteLength
+      parsedJson = JSON.parse(trimmed)
+      const minified = JSON.stringify(parsedJson)
+      jsonMinifiedBytes = encoder.encode(minified).byteLength
       jsonValid = true
     } catch {
       jsonValid = false
     }
   }
 
-  return { bytes, chars, lines, isMultiByte, jsonMinifiedBytes, jsonValid }
+  return { bytes, chars, lines, isMultiByte, jsonMinifiedBytes, jsonValid, parsedJson }
 }
 
 const PLACEHOLDER = `Cole aqui seu payload JSON, string ou qualquer texto para medir o tamanho...
@@ -81,38 +98,32 @@ const PLACEHOLDER = `Cole aqui seu payload JSON, string ou qualquer texto para m
   "data": { "orderId": "xyz-789", "total": 99.90 }
 }`
 
+const smBtnStyle: React.CSSProperties = { fontSize: 11, padding: '3px 8px' }
+
 export default function StringSizeTool() {
   const [input, setInput] = useState('')
   const { copy, copied } = useCopyToClipboard()
-  const { toast } = useToast()
 
   const info = useMemo(() => analyzeText(input), [input])
 
   const handleMinify = useCallback(() => {
-    if (!info.jsonValid) {
-      toast('JSON inválido para minificar', 'error')
-      return
-    }
-    try {
-      const minified = JSON.stringify(JSON.parse(input.trim()))
-      setInput(minified)
-    } catch {
-      toast('Erro ao minificar', 'error')
-    }
-  }, [input, info.jsonValid, toast])
+    if (!info.parsedJson) return
+    setInput(JSON.stringify(info.parsedJson))
+  }, [info.parsedJson])
 
   const handlePrettify = useCallback(() => {
-    if (!info.jsonValid) {
-      toast('JSON inválido para formatar', 'error')
-      return
-    }
-    try {
-      const pretty = JSON.stringify(JSON.parse(input.trim()), null, 2)
-      setInput(pretty)
-    } catch {
-      toast('Erro ao formatar', 'error')
-    }
-  }, [input, info.jsonValid, toast])
+    if (!info.parsedJson) return
+    setInput(JSON.stringify(info.parsedJson, null, 2))
+  }, [info.parsedJson])
+
+  const limitCards = useMemo(() =>
+    LIMITS.map(limit => {
+      const ratio = info.bytes / limit.bytes
+      const level = getStatusLevel(ratio)
+      return { ...limit, ratio, level, pct: Math.min(ratio * 100, 100) }
+    }),
+    [info.bytes]
+  )
 
   const hasContent = input.length > 0
 
@@ -140,16 +151,16 @@ export default function StringSizeTool() {
           <div style={{ display: 'flex', gap: 6 }}>
             {info.jsonValid && (
               <>
-                <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }} onClick={handleMinify}>
+                <button className="btn" style={smBtnStyle} onClick={handleMinify}>
                   <Minimize2 size={11} /> Minificar
                 </button>
-                <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }} onClick={handlePrettify}>
+                <button className="btn" style={smBtnStyle} onClick={handlePrettify}>
                   {'{ }'} Formatar
                 </button>
               </>
             )}
             {hasContent && (
-              <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setInput('')}>
+              <button className="btn" style={smBtnStyle} onClick={() => setInput('')}>
                 Limpar
               </button>
             )}
@@ -171,7 +182,7 @@ export default function StringSizeTool() {
               {copied ? 'Copiado!' : 'Copiar bytes'}
             </button>
 
-            {info.jsonValid && info.jsonMinifiedBytes !== null && info.jsonMinifiedBytes !== info.bytes && (
+            {info.jsonMinifiedBytes !== null && info.jsonMinifiedBytes !== info.bytes && (
               <div style={jsonSizeRowStyle}>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                   Minificado: <strong style={{ color: 'var(--text)' }}>{formatBytes(info.jsonMinifiedBytes)}</strong>
@@ -187,36 +198,29 @@ export default function StringSizeTool() {
           <div>
             <span style={sectionLabelStyle}>Limites de serviços AWS</span>
             <div style={limitsGridStyle}>
-              {LIMITS.map(limit => {
-                const ratio = info.bytes / limit.bytes
-                const over = ratio > 1
-                const color = getStatusColor(ratio)
-                const pct = Math.min(ratio * 100, 100)
-
-                return (
-                  <div key={limit.name} style={limitCardStyle}>
-                    <div style={limitHeaderStyle}>
-                      <StatusIcon ratio={ratio} />
-                      <span style={limitNameStyle}>{limit.name}</span>
-                      <span style={{ ...limitValueStyle, color: over ? 'var(--red, #ef4444)' : 'var(--text-muted)' }}>
-                        {over
-                          ? `+${formatBytes(info.bytes - limit.bytes)} acima`
-                          : `${formatBytes(limit.bytes - info.bytes)} sobrando`}
-                      </span>
-                    </div>
-                    <div style={progressTrackStyle}>
-                      <div style={{ ...progressFillStyle, width: `${pct}%`, background: color }} />
-                    </div>
-                    <div style={limitFooterStyle}>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{limit.description}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-                        {formatBytes(info.bytes)} / {formatBytes(limit.bytes)}
-                        {' '}({ratio >= 1 ? '≥100' : (ratio * 100).toFixed(1)}%)
-                      </span>
-                    </div>
+              {limitCards.map(({ name, bytes: limitBytes, description, ratio, level, pct }) => (
+                <div key={name} style={limitCardStyle}>
+                  <div style={limitHeaderStyle}>
+                    <StatusIcon level={level} />
+                    <span style={limitNameStyle}>{name}</span>
+                    <span style={{ ...limitValueStyle, color: ratio > 1 ? COLOR_ERR : 'var(--text-muted)' }}>
+                      {ratio > 1
+                        ? `+${formatBytes(info.bytes - limitBytes)} acima`
+                        : `${formatBytes(limitBytes - info.bytes)} sobrando`}
+                    </span>
                   </div>
-                )
-              })}
+                  <div style={progressTrackStyle}>
+                    <div style={{ ...progressFillStyle, width: `${pct}%`, background: statusColor(level) }} />
+                  </div>
+                  <div style={limitFooterStyle}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{description}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                      {formatBytes(info.bytes)} / {formatBytes(limitBytes)}
+                      {' '}({ratio >= 1 ? '≥100' : (ratio * 100).toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </>
