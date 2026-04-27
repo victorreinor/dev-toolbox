@@ -18,12 +18,14 @@ import dedupLines from './tools/dedup-lines/meta'
 import cronParser from './tools/cron-parser/meta'
 import base64 from './tools/base64/meta'
 import csvViewer from './tools/csv-viewer/meta'
+import stringSize from './tools/string-size/meta'
 
 export const registry: ToolMeta[] = [
   psqlToJson,
   cronParser,
   base64,
   csvViewer,
+  stringSize,
   dedupLines,
   markdownPreview,
   uuidGenerator,
