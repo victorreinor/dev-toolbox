@@ -19,9 +19,11 @@ import cronParser from './tools/cron-parser/meta'
 import base64 from './tools/base64/meta'
 import csvViewer from './tools/csv-viewer/meta'
 import stringSize from './tools/string-size/meta'
+import jsonDiff from './tools/json-diff/meta'
 
 export const registry: ToolMeta[] = [
   psqlToJson,
+  jsonDiff,
   cronParser,
   base64,
   csvViewer,
