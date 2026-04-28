@@ -20,10 +20,12 @@ import base64 from './tools/base64/meta'
 import csvViewer from './tools/csv-viewer/meta'
 import stringSize from './tools/string-size/meta'
 import jsonDiff from './tools/json-diff/meta'
+import sqlBeautifier from './tools/sql-beautifier/meta'
 
 export const registry: ToolMeta[] = [
   psqlToJson,
   jsonDiff,
+  sqlBeautifier,
   cronParser,
   base64,
   csvViewer,

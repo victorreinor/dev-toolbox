@@ -44,9 +44,9 @@ const REMOVED = {
 } as const
 
 const ROW_STYLES: Record<DiffLine['status'], React.CSSProperties> = {
-  added:   { display: 'flex', background: ADDED.bg,   borderLeft: `2px solid ${ADDED.border}` },
+  added: { display: 'flex', background: ADDED.bg, borderLeft: `2px solid ${ADDED.border}` },
   removed: { display: 'flex', background: REMOVED.bg, borderLeft: `2px solid ${REMOVED.border}` },
-  equal:   { display: 'flex', background: 'transparent', borderLeft: '2px solid transparent' },
+  equal: { display: 'flex', background: 'transparent', borderLeft: '2px solid transparent' },
 }
 
 const GUTTER_BASE: React.CSSProperties = {
@@ -54,17 +54,17 @@ const GUTTER_BASE: React.CSSProperties = {
 }
 
 const GUTTER_STYLES: Record<DiffLine['status'], React.CSSProperties> = {
-  added:   { ...GUTTER_BASE, color: 'var(--accent)', fontWeight: 600 },
-  removed: { ...GUTTER_BASE, color: 'var(--error)',  fontWeight: 600 },
-  equal:   { ...GUTTER_BASE, color: 'var(--text-dim)', fontWeight: 400 },
+  added: { ...GUTTER_BASE, color: 'var(--accent)', fontWeight: 600 },
+  removed: { ...GUTTER_BASE, color: 'var(--error)', fontWeight: 600 },
+  equal: { ...GUTTER_BASE, color: 'var(--text-dim)', fontWeight: 400 },
 }
 
 const TEXT_BASE: React.CSSProperties = { flex: 1, padding: '0 12px 0 0', whiteSpace: 'pre' }
 
 const TEXT_STYLES: Record<DiffLine['status'], React.CSSProperties> = {
-  added:   { ...TEXT_BASE, color: ADDED.text },
+  added: { ...TEXT_BASE, color: ADDED.text },
   removed: { ...TEXT_BASE, color: REMOVED.text },
-  equal:   { ...TEXT_BASE, color: 'var(--text-muted)' },
+  equal: { ...TEXT_BASE, color: 'var(--text-muted)' },
 }
 
 const GUTTER_CHAR: Record<DiffLine['status'], string> = {
