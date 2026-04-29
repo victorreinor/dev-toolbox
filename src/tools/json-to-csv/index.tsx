@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -39,6 +40,8 @@ export default function JsonToCsv() {
     setPreviewRows(csv.split('\n').slice(0, 51).map(l => l.split(delimiter)))
     toast('CSV gerado!', 'success')
   }
+
+  useSubmitOnCmdEnter(convert)
 
   const headers = includeHeader ? (previewRows[0] ?? []) : []
   const rows = previewRows.slice(includeHeader ? 1 : 0, 51)

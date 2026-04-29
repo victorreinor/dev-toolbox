@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -48,6 +49,8 @@ export default function JsonToJsObject() {
     setJsOutput(jsString);
     toast('Objeto JS gerado!', 'success');
   }
+
+  useSubmitOnCmdEnter(convert)
 
   return (
     <ToolLayout name="JSON → JS Object" description="Converta JSON para objeto literal JavaScript" badge="converter">

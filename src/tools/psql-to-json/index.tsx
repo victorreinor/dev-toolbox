@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
@@ -71,6 +72,8 @@ export default function PsqlToJson() {
     setProcessing(true)
     post({ type: 'parse', text: input, mode, nullEmpty })
   }
+
+  useSubmitOnCmdEnter(convert)
 
   return (
     <ToolLayout

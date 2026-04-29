@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -46,6 +47,8 @@ export default function JsonToSql() {
     setSqlOutput(generateSQL(data, { table, operation, dialect, keyFields, batchSize }))
     toast(`${data.length} statement(s) gerado(s)!`, 'success')
   }
+
+  useSubmitOnCmdEnter(convert)
 
   return (
     <ToolLayout name="JSON → SQL" description="Gere statements SQL a partir de arrays JSON" badge="converter">

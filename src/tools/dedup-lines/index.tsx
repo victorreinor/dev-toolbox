@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
@@ -59,6 +60,8 @@ export default function DedupLines() {
     setProcessing(true)
     post({ type: 'dedup', text: input, caseSensitive, ignoreBlank, trimLines })
   }
+
+  useSubmitOnCmdEnter(process)
 
   return (
     <ToolLayout

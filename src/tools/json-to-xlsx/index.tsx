@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -51,6 +52,8 @@ export default function JsonToXlsx() {
     setProcessing(true)
     post({ type: 'writeXLSX', data, options: { sheetName, flattenSeparator: flatSep } })
   }
+
+  useSubmitOnCmdEnter(process)
 
   const cols = preview.length > 0 ? Object.keys(preview[0]) : []
   const rows = preview.map(row => cols.map(c => row[c] as string))

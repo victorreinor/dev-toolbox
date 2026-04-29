@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SqlLanguage } from 'sql-formatter'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
@@ -73,6 +74,8 @@ export default function SqlBeautifier() {
     setProcessing(true)
     post({ type: 'format', sql: input, dialect, tabWidth, uppercase })
   }
+
+  useSubmitOnCmdEnter(format)
 
   return (
     <ToolLayout

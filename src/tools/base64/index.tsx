@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
@@ -152,6 +153,7 @@ export default function Base64Tool() {
   })
 
   const handleDecode = () => {
+    if (mode !== 'decode') return
     if (!decodeInput.trim()) {
       toast('Cole o Base64 para decodificar', 'error')
       return
@@ -160,6 +162,8 @@ export default function Base64Tool() {
     setProcessing(true)
     post({ type: 'decode', input: decodeInput })
   }
+
+  useSubmitOnCmdEnter(handleDecode)
 
   const handleClear = () => {
     setFile(null)

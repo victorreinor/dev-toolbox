@@ -4,6 +4,7 @@ import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
 import { useToast } from '../../components/Toast'
 import { useWorker } from '../../hooks/useWorker'
+import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 
 interface DiffLine {
   text: string
@@ -134,6 +135,8 @@ export default function JsonDiff() {
   }
 
   const swap = () => { setLeft(right); setRight(left); clearResult() }
+
+  useSubmitOnCmdEnter(compare)
 
   const isIdentical = stats && stats.added === 0 && stats.removed === 0
 
