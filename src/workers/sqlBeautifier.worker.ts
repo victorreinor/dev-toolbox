@@ -1,4 +1,4 @@
-import { format, type SqlLanguage } from 'sql-formatter'
+import { format, type SqlLanguage, type IndentStyle, type LogicalOperatorNewline } from 'sql-formatter'
 
 interface WorkerRequest {
   type: 'format'
@@ -6,6 +6,8 @@ interface WorkerRequest {
   dialect: SqlLanguage
   tabWidth: number
   uppercase: boolean
+  indentStyle: IndentStyle
+  logicalOperatorNewline: LogicalOperatorNewline
 }
 
 interface WorkerResponse {
@@ -15,7 +17,7 @@ interface WorkerResponse {
 }
 
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
-  const { type, sql, dialect, tabWidth, uppercase } = e.data
+  const { type, sql, dialect, tabWidth, uppercase, indentStyle, logicalOperatorNewline } = e.data
 
   if (type !== 'format') return
 
@@ -24,7 +26,8 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
       language: dialect,
       tabWidth,
       keywordCase: uppercase ? 'upper' : 'preserve',
-      indentStyle: 'standard',
+      indentStyle,
+      logicalOperatorNewline,
     })
 
     const response: WorkerResponse = { ok: true, result }

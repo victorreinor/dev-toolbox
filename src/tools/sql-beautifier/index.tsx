@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { SqlLanguage } from 'sql-formatter'
+import type { SqlLanguage, IndentStyle, LogicalOperatorNewline } from 'sql-formatter'
 import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
 import { ToolLayout } from '../../components/ToolLayout'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -13,6 +13,8 @@ interface WorkerRequest {
   dialect: SqlLanguage
   tabWidth: number
   uppercase: boolean
+  indentStyle: IndentStyle
+  logicalOperatorNewline: LogicalOperatorNewline
 }
 
 interface WorkerResponse {
@@ -32,6 +34,17 @@ const DIALECTS: { label: string; value: SqlLanguage }[] = [
   { label: 'Trino / PrestoSQL', value: 'trino' },
 ]
 
+const INDENT_STYLES: { label: string; value: IndentStyle }[] = [
+  { label: 'Padrão', value: 'standard' },
+  { label: 'Tabular esquerda', value: 'tabularLeft' },
+  { label: 'Tabular direita', value: 'tabularRight' },
+]
+
+const LOGICAL_NEWLINES: { label: string; value: LogicalOperatorNewline }[] = [
+  { label: 'AND/OR no início', value: 'before' },
+  { label: 'AND/OR no fim', value: 'after' },
+]
+
 const PLACEHOLDER = `SELECT
 u.id, u.name, o.total
 FROM users u
@@ -40,6 +53,23 @@ WHERE u.active = true AND o.total > 100
 ORDER BY o.total DESC
 LIMIT 50`
 
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: 'var(--text-dim)',
+  fontWeight: 500,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+function SelectField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={labelStyle}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
 export default function SqlBeautifier() {
   const { toast } = useToast()
   const [input, setInput] = useState('')
@@ -47,6 +77,8 @@ export default function SqlBeautifier() {
   const [dialect, setDialect] = useState<SqlLanguage>('sql')
   const [tabWidth, setTabWidth] = useState(2)
   const [uppercase, setUppercase] = useState(true)
+  const [indentStyle, setIndentStyle] = useState<IndentStyle>('standard')
+  const [logicalOperatorNewline, setLogicalOperatorNewline] = useState<LogicalOperatorNewline>('before')
   const [processing, setProcessing] = useState(false)
 
   const { post } = useWorker<WorkerRequest, WorkerResponse>(
@@ -72,7 +104,7 @@ export default function SqlBeautifier() {
     if (!input.trim()) { toast('Cole o SQL para formatar', 'error'); return }
     setOutput('')
     setProcessing(true)
-    post({ type: 'format', sql: input, dialect, tabWidth, uppercase })
+    post({ type: 'format', sql: input, dialect, tabWidth, uppercase, indentStyle, logicalOperatorNewline })
   }
 
   useSubmitOnCmdEnter(format)
@@ -84,8 +116,7 @@ export default function SqlBeautifier() {
       badge="formatter"
     >
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelStyle}>Dialeto</label>
+        <SelectField label="Dialeto">
           <select
             className="select"
             value={dialect}
@@ -95,10 +126,9 @@ export default function SqlBeautifier() {
               <option key={d.value} value={d.value}>{d.label}</option>
             ))}
           </select>
-        </div>
+        </SelectField>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={labelStyle}>Indentação</label>
+        <SelectField label="Indentação">
           <select
             className="select"
             value={tabWidth}
@@ -107,7 +137,31 @@ export default function SqlBeautifier() {
             <option value={2}>2 espaços</option>
             <option value={4}>4 espaços</option>
           </select>
-        </div>
+        </SelectField>
+
+        <SelectField label="Estilo">
+          <select
+            className="select"
+            value={indentStyle}
+            onChange={e => setIndentStyle(INDENT_STYLES.find(s => s.value === e.target.value)?.value ?? 'standard')}
+          >
+            {INDENT_STYLES.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </SelectField>
+
+        <SelectField label="AND / OR">
+          <select
+            className="select"
+            value={logicalOperatorNewline}
+            onChange={e => setLogicalOperatorNewline(LOGICAL_NEWLINES.find(o => o.value === e.target.value)?.value ?? 'before')}
+          >
+            {LOGICAL_NEWLINES.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </SelectField>
 
         <label className="checkbox-label" style={{ paddingBottom: 2 }}>
           <input type="checkbox" checked={uppercase} onChange={e => setUppercase(e.target.checked)} />
@@ -140,12 +194,4 @@ export default function SqlBeautifier() {
       )}
     </ToolLayout>
   )
-}
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: 'var(--text-dim)',
-  fontWeight: 500,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
 }
