@@ -3,8 +3,8 @@ import type { ToolMeta } from '../../types'
 
 const meta: ToolMeta = {
   id: 'json-to-js-object',
-  name: 'JSON → JS Object',
-  description: 'Converta JSON para objeto literal JavaScript',
+  name: 'JSON ↔ JS Object',
+  description: 'Converta entre JSON e objeto literal JavaScript, nos dois sentidos',
   category: 'converter',
   icon: 'Braces',
   keywords: ['json', 'javascript', 'object', 'converter', 'js'],
