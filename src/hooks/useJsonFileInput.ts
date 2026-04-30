@@ -3,7 +3,7 @@ import { useToast } from '../components/Toast'
 import { usePageDrop } from './usePageDrop'
 import { parseJsonArray } from '../utils/parseJson'
 
-export function useJsonFileInput() {
+export function useJsonFileInput(options?: { disabled?: boolean }) {
   const { toast } = useToast()
   const [mode, setMode] = useState<'text' | 'file'>('text')
   const [file, setFile] = useState<File | null>(null)
@@ -23,7 +23,7 @@ export function useJsonFileInput() {
     fileData.current = null
   }, [])
 
-  const { draggingOver } = usePageDrop({ accept: ['.json'], onFile: handleFile })
+  const { draggingOver } = usePageDrop({ accept: ['.json'], onFile: handleFile, disabled: options?.disabled })
 
   return { mode, setMode, file, fileData, handleFile, clearFile, draggingOver }
 }
