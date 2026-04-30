@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
+import { usePageDrop } from '../../hooks/usePageDrop'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
@@ -24,25 +25,27 @@ function jsObjectToJson(input: string): string {
 
 export default function JsonJsObject() {
   const { toast } = useToast()
-  const { mode: jsonMode, setMode: setJsonMode, file: jsonFile, fileData, handleFile: handleJsonFile, clearFile: clearJsonFile, draggingOver } = useJsonFileInput()
+  const [direction, setDirection] = useState<Direction>('json-to-js')
+  const isJsonToJs = direction === 'json-to-js'
+
   const [jsMode, setJsMode] = useState<Mode>('text')
   const [jsFile, setJsFile] = useState<File | null>(null)
   const [inputText, setInputText] = useState('')
   const [output, setOutput] = useState('')
-  const [direction, setDirection] = useState<Direction>('json-to-js')
 
-  const isJsonToJs = direction === 'json-to-js'
-
-  const handleJsFile = async (f: File) => {
+  const handleJsFile = useCallback(async (f: File) => {
     setJsMode('file')
     setJsFile(f)
     setInputText(await f.text())
-  }
+  }, [])
 
   const clearJsFile = () => {
     setJsFile(null)
     setInputText('')
   }
+
+  const { mode: jsonMode, setMode: setJsonMode, file: jsonFile, fileData, handleFile: handleJsonFile, clearFile: clearJsonFile, draggingOver: jsonDraggingOver } = useJsonFileInput({ disabled: !isJsonToJs })
+  const { draggingOver: jsDraggingOver } = usePageDrop({ accept: ['.js', '.ts', '.txt'], onFile: handleJsFile, disabled: isJsonToJs })
 
   const handleDirectionChange = (d: Direction) => {
     setDirection(d)
@@ -77,6 +80,7 @@ export default function JsonJsObject() {
 
   const currentMode = isJsonToJs ? jsonMode : jsMode
   const setCurrentMode = isJsonToJs ? setJsonMode : setJsMode
+  const draggingOver = isJsonToJs ? jsonDraggingOver : jsDraggingOver
 
   return (
     <ToolLayout
@@ -84,15 +88,18 @@ export default function JsonJsObject() {
       description={isJsonToJs ? 'Converta JSON para objeto literal JavaScript' : 'Converta objeto literal JavaScript para JSON'}
       badge="converter"
     >
-      <PageDropOverlay visible={draggingOver} accept=".json" />
+      <PageDropOverlay visible={draggingOver} accept={isJsonToJs ? '.json' : '.js · .ts · .txt'} />
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button className={`btn ${isJsonToJs ? 'primary' : 'ghost'}`} onClick={() => handleDirectionChange('json-to-js')}>
-          JSON → JS Object
-        </button>
-        <button className={`btn ${!isJsonToJs ? 'primary' : 'ghost'}`} onClick={() => handleDirectionChange('js-to-json')}>
-          JS Object → JSON
-        </button>
+      <div className="field">
+        <label className="label">Formato</label>
+        <div className="radio-group">
+          {(['json-to-js', 'js-to-json'] as const).map(d => (
+            <label key={d} className={`radio-option ${direction === d ? 'active' : ''}`}>
+              <input type="radio" name="direction" value={d} checked={direction === d} onChange={() => handleDirectionChange(d)} />
+              {d === 'json-to-js' ? 'JSON → JS Object' : 'JS Object → JSON'}
+            </label>
+          ))}
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
