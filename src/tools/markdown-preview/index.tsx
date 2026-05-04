@@ -1,14 +1,58 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import hljs from 'highlight.js/lib/common'
-import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown } from 'lucide-react'
+import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2 } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import { usePageDrop } from '../../hooks/usePageDrop'
+
+async function compressToBase64url(text: string): Promise<string> {
+  const encoded = new TextEncoder().encode(text)
+  const cs = new CompressionStream('deflate-raw')
+  const writer = cs.writable.getWriter()
+  writer.write(encoded)
+  writer.close()
+  const chunks: Uint8Array[] = []
+  const reader = cs.readable.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  const total = chunks.reduce((n, c) => n + c.length, 0)
+  const buf = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) { buf.set(c, offset); offset += c.length }
+  return btoa(String.fromCharCode(...buf))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+async function decompressFromBase64url(b64url: string): Promise<string> {
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
+  const binary = atob(b64)
+  const buf = Uint8Array.from(binary, c => c.charCodeAt(0))
+  const ds = new DecompressionStream('deflate-raw')
+  const writer = ds.writable.getWriter()
+  writer.write(buf)
+  writer.close()
+  const chunks: Uint8Array[] = []
+  const reader = ds.readable.getReader()
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+  }
+  const total = chunks.reduce((n, c) => n + c.length, 0)
+  const out = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) { out.set(c, offset); offset += c.length }
+  return new TextDecoder().decode(out)
+}
 
 type ViewMode = 'editor' | 'split' | 'preview'
 
@@ -246,11 +290,37 @@ ${bodyHTML}
 export default function MarkdownPreview() {
   const { toast } = useToast()
   const { copy, copied } = useCopyToClipboard()
+  const [searchParams] = useSearchParams()
   const [markdown, setMarkdown] = useState(SAMPLE)
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [fileName, setFileName] = useState<string | null>(null)
+  const [sharecopied, setShareCopied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const param = searchParams.get('md')
+    if (!param) return
+    decompressFromBase64url(param)
+      .then(text => {
+        setMarkdown(text)
+        setViewMode('preview')
+      })
+      .catch(() => toast('Link inválido ou corrompido', 'error'))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleShare = useCallback(async () => {
+    try {
+      const encoded = await compressToBase64url(markdown)
+      const url = `${window.location.origin}/tools/markdown-preview?md=${encoded}`
+      await navigator.clipboard.writeText(url)
+      setShareCopied(true)
+      toast('Link copiado!', 'success')
+      setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      toast('Erro ao gerar link', 'error')
+    }
+  }, [markdown, toast])
 
   const handleAnchorClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
@@ -386,6 +456,10 @@ export default function MarkdownPreview() {
         <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => copy(markdown)} disabled={!markdown}>
           {copied ? <Check size={13} color="var(--accent)" /> : <Copy size={13} />}
           {copied ? 'Copiado!' : 'Copiar MD'}
+        </button>
+        <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShare} disabled={!markdown}>
+          {sharecopied ? <Check size={13} color="var(--accent)" /> : <Share2 size={13} />}
+          {sharecopied ? 'Link copiado!' : 'Compartilhar'}
         </button>
         <DownloadButton data={markdown || null} filename={fileName ?? 'documento.md'} mimeType="text/markdown" label="Baixar .md" />
         <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleExportPDF} disabled={!markdown}>
