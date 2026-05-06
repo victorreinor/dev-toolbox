@@ -21,8 +21,10 @@ import csvViewer from './tools/csv-viewer/meta'
 import stringSize from './tools/string-size/meta'
 import jsonDiff from './tools/json-diff/meta'
 import sqlBeautifier from './tools/sql-beautifier/meta'
+import textToFile from './tools/text-to-file/meta'
 
 export const registry: ToolMeta[] = [
+  textToFile,
   psqlToJson,
   jsonDiff,
   sqlBeautifier,
