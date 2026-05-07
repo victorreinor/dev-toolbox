@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import hljs from 'highlight.js/lib/common'
-import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2 } from 'lucide-react'
+import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
@@ -11,6 +11,7 @@ import { useToast } from '../../components/Toast'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import { usePageDrop } from '../../hooks/usePageDrop'
 import { compressToBase64url, decompressFromBase64url } from '../../utils/compression'
+import { shortenUrl, isLocalhost } from '../../utils/urlShortener'
 
 type ViewMode = 'editor' | 'split' | 'preview'
 
@@ -252,7 +253,13 @@ export default function MarkdownPreview() {
   const [markdown, setMarkdown] = useState(SAMPLE)
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [fileName, setFileName] = useState<string | null>(null)
-  const [sharecopied, setShareCopied] = useState(false)
+  const [copiedButton, setCopiedButton] = useState<'share' | 'short' | null>(null)
+  const [shortening, setShortening] = useState(false)
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => { if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current) }
+  }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -267,18 +274,46 @@ export default function MarkdownPreview() {
       .catch(() => toast('Link inválido ou corrompido', 'error'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const buildShareUrl = useCallback(async () => {
+    const encoded = await compressToBase64url(markdown)
+    return `${window.location.origin}/tools/markdown-preview?md=${encoded}`
+  }, [markdown])
+
+  const markCopied = useCallback((button: 'share' | 'short') => {
+    clearTimeout(copiedTimeoutRef.current ?? undefined)
+    setCopiedButton(button)
+    copiedTimeoutRef.current = setTimeout(() => setCopiedButton(null), 2000)
+  }, [])
+
   const handleShare = useCallback(async () => {
     try {
-      const encoded = await compressToBase64url(markdown)
-      const url = `${window.location.origin}/tools/markdown-preview?md=${encoded}`
+      const url = await buildShareUrl()
       await navigator.clipboard.writeText(url)
-      setShareCopied(true)
+      markCopied('share')
       toast('Link copiado!', 'success')
-      setTimeout(() => setShareCopied(false), 2000)
     } catch {
       toast('Erro ao gerar link', 'error')
     }
-  }, [markdown, toast])
+  }, [buildShareUrl, markCopied, toast])
+
+  const handleShareShort = useCallback(async () => {
+    if (isLocalhost()) {
+      toast('Link curto só funciona em produção (não em localhost)', 'error')
+      return
+    }
+    try {
+      setShortening(true)
+      const longUrl = await buildShareUrl()
+      const short = await shortenUrl(longUrl)
+      await navigator.clipboard.writeText(short)
+      markCopied('short')
+      toast('Link curto copiado!', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao encurtar URL', 'error')
+    } finally {
+      setShortening(false)
+    }
+  }, [buildShareUrl, markCopied, toast])
 
   const handleAnchorClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
@@ -361,6 +396,7 @@ export default function MarkdownPreview() {
   const { draggingOver } = usePageDrop({ accept: ACCEPT, onFile: handleFile })
 
   const showEditor = viewMode !== 'preview'
+  const shortButtonLabel = shortening ? 'Encurtando…' : copiedButton === 'short' ? 'Copiado!' : 'Link curto'
 
   return (
     <ToolLayout
@@ -416,8 +452,12 @@ export default function MarkdownPreview() {
           {copied ? 'Copiado!' : 'Copiar MD'}
         </button>
         <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShare} disabled={!markdown}>
-          {sharecopied ? <Check size={13} color="var(--accent)" /> : <Share2 size={13} />}
-          {sharecopied ? 'Link copiado!' : 'Compartilhar'}
+          {copiedButton === 'share' ? <Check size={13} color="var(--accent)" /> : <Share2 size={13} />}
+          {copiedButton === 'share' ? 'Link copiado!' : 'Compartilhar'}
+        </button>
+        <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShareShort} disabled={!markdown || shortening}>
+          {copiedButton === 'short' ? <Check size={13} color="var(--accent)" /> : <Link size={13} />}
+          {shortButtonLabel}
         </button>
         <DownloadButton data={markdown || null} filename={fileName ?? 'documento.md'} mimeType="text/markdown" label="Baixar .md" />
         <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleExportPDF} disabled={!markdown}>

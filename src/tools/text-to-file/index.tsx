@@ -4,6 +4,7 @@ import { Download, Clipboard, Trash2, FileDown, Share2, Check, Link, Save, Clock
 import { ToolLayout } from '../../components/ToolLayout'
 import { useToast } from '../../components/Toast'
 import { compressToBase64url, decompressFromBase64url } from '../../utils/compression'
+import { shortenUrl, isLocalhost } from '../../utils/urlShortener'
 import { useTextHistory, type HistoryEntry } from './useTextHistory'
 
 const EXTENSIONS = [
@@ -86,7 +87,7 @@ export default function TextToFile() {
   }, [text, filename, activeExt])
 
   const markCopied = useCallback((button: 'share' | 'short') => {
-    if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)
+    clearTimeout(copiedTimeoutRef.current ?? undefined)
     setCopiedButton(button)
     copiedTimeoutRef.current = setTimeout(() => setCopiedButton(null), 2000)
   }, [])
@@ -128,17 +129,15 @@ export default function TextToFile() {
 
   const handleShareShort = useCallback(async () => {
     if (!text) { toast('Cole algum texto antes de compartilhar', 'error'); return }
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    if (isLocalhost()) {
       toast('Link curto só funciona em produção (não em localhost)', 'error')
       return
     }
     try {
       setShortening(true)
       const longUrl = await buildShareUrl()
-      const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`)
-      const json = await res.json() as { shorturl?: string; errormessage?: string }
-      if (!json.shorturl) throw new Error(json.errormessage ?? 'Erro desconhecido')
-      await navigator.clipboard.writeText(json.shorturl)
+      const short = await shortenUrl(longUrl)
+      await navigator.clipboard.writeText(short)
       markCopied('short')
       toast('Link curto copiado!', 'success')
     } catch (err) {
