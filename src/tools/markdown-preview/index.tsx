@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import hljs from 'highlight.js/lib/common'
-import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link } from 'lucide-react'
+import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link, Save, Clock, CornerDownLeft } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
@@ -12,8 +12,32 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import { usePageDrop } from '../../hooks/usePageDrop'
 import { compressToBase64url, decompressFromBase64url } from '../../utils/compression'
 import { shortenUrl, isLocalhost } from '../../utils/urlShortener'
+import { useMarkdownHistory, type MarkdownEntry } from './useMarkdownHistory'
 
 type ViewMode = 'editor' | 'split' | 'preview'
+type ActiveTab = 'editor' | 'saved'
+
+function formatDate(ts: number) {
+  const d = new Date(ts)
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function tabStyle(isActive: boolean): React.CSSProperties {
+  return {
+    padding: '7px 16px',
+    fontSize: 12,
+    fontWeight: 600,
+    fontFamily: 'var(--font-mono)',
+    background: 'none',
+    border: 'none',
+    borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+    color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+    cursor: 'pointer',
+    letterSpacing: '0.05em',
+    transition: 'color 0.15s',
+  }
+}
 
 function slugify(text: string): string {
   return text
@@ -250,15 +274,22 @@ export default function MarkdownPreview() {
   const { toast } = useToast()
   const { copy, copied } = useCopyToClipboard()
   const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<ActiveTab>('editor')
   const [markdown, setMarkdown] = useState(SAMPLE)
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [fileName, setFileName] = useState<string | null>(null)
   const [copiedButton, setCopiedButton] = useState<'share' | 'short' | null>(null)
   const [shortening, setShortening] = useState(false)
+  const [savedMd, setSavedMd] = useState(false)
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { entries, loading, save, remove } = useMarkdownHistory()
 
   useEffect(() => {
-    return () => { if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current) }
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    }
   }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -395,6 +426,21 @@ export default function MarkdownPreview() {
 
   const { draggingOver } = usePageDrop({ accept: ACCEPT, onFile: handleFile })
 
+  const handleSave = useCallback(async () => {
+    if (!markdown) { toast('Nenhum conteúdo para salvar', 'error'); return }
+    await save(markdown)
+    setSavedMd(true)
+    clearTimeout(savedTimeoutRef.current ?? undefined)
+    savedTimeoutRef.current = setTimeout(() => setSavedMd(false), 2000)
+  }, [markdown, save])
+
+  const handleLoadEntry = useCallback((entry: MarkdownEntry) => {
+    setMarkdown(entry.content)
+    setFileName(null)
+    setActiveTab('editor')
+    toast(`"${entry.title}" carregado`, 'success')
+  }, [toast])
+
   const showEditor = viewMode !== 'preview'
   const shortButtonLabel = shortening ? 'Encurtando…' : copiedButton === 'short' ? 'Copiado!' : 'Link curto'
 
@@ -406,113 +452,196 @@ export default function MarkdownPreview() {
     >
       <PageDropOverlay visible={draggingOver} accept=".md, .txt, .markdown" />
 
-      {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 3 }}>
-          {(
-            [
-              { mode: 'editor' as ViewMode, Icon: AlignLeft, label: 'Editor' },
-              { mode: 'split' as ViewMode, Icon: Columns2, label: 'Dividido' },
-              { mode: 'preview' as ViewMode, Icon: Eye, label: 'Prévia' },
-            ]
-          ).map(({ mode, Icon, label }) => (
-            <button
-              key={mode}
-              className={`btn${viewMode === mode ? ' primary' : ' ghost'}`}
-              style={{ padding: '4px 10px', fontSize: 12 }}
-              onClick={() => setViewMode(mode)}
-            >
-              <Icon size={13} />
-              {label}
+      {/* Tab navigation */}
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', marginBottom: 4, flexShrink: 0 }}>
+        <button onClick={() => setActiveTab('editor')} style={tabStyle(activeTab === 'editor')}>
+          EDITOR
+        </button>
+        <button onClick={() => setActiveTab('saved')} style={{ ...tabStyle(activeTab === 'saved'), display: 'flex', alignItems: 'center', gap: 6 }}>
+          SALVO
+          {entries.length > 0 && (
+            <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
+              {entries.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'editor' && (
+        <>
+          {/* Toolbar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 3 }}>
+              {(
+                [
+                  { mode: 'editor' as ViewMode, Icon: AlignLeft, label: 'Editor' },
+                  { mode: 'split' as ViewMode, Icon: Columns2, label: 'Dividido' },
+                  { mode: 'preview' as ViewMode, Icon: Eye, label: 'Prévia' },
+                ]
+              ).map(({ mode, Icon, label }) => (
+                <button
+                  key={mode}
+                  className={`btn${viewMode === mode ? ' primary' : ' ghost'}`}
+                  style={{ padding: '4px 10px', fontSize: 12 }}
+                  onClick={() => setViewMode(mode)}
+                >
+                  <Icon size={13} />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ flex: 1 }} />
+
+            {fileName && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                <FileText size={11} />
+                {fileName}
+              </span>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".md,.txt,.markdown"
+              style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
+            />
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => fileInputRef.current?.click()}>
+              <Upload size={13} /> Upload
             </button>
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleSave} disabled={!markdown} title="Salvar no histórico local">
+              {savedMd ? <Check size={13} color="var(--accent)" /> : <Save size={13} />}
+              {savedMd ? 'Salvo!' : 'Salvar'}
+            </button>
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => copy(markdown)} disabled={!markdown}>
+              {copied ? <Check size={13} color="var(--accent)" /> : <Copy size={13} />}
+              {copied ? 'Copiado!' : 'Copiar MD'}
+            </button>
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShare} disabled={!markdown}>
+              {copiedButton === 'share' ? <Check size={13} color="var(--accent)" /> : <Share2 size={13} />}
+              {copiedButton === 'share' ? 'Link copiado!' : 'Compartilhar'}
+            </button>
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShareShort} disabled={!markdown || shortening}>
+              {copiedButton === 'short' ? <Check size={13} color="var(--accent)" /> : <Link size={13} />}
+              {shortButtonLabel}
+            </button>
+            <DownloadButton data={markdown || null} filename={fileName ?? 'documento.md'} mimeType="text/markdown" label="Baixar .md" />
+            <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleExportPDF} disabled={!markdown}>
+              <FileDown size={13} /> PDF
+            </button>
+            <button
+              className="btn ghost"
+              style={{ padding: '6px 8px' }}
+              onClick={() => { setMarkdown(''); setFileName(null) }}
+              disabled={!markdown}
+              title="Limpar"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+
+          {/* Split pane */}
+          <div
+            style={{ flex: 1, minHeight: 0, display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}
+          >
+            {/* Editor pane */}
+            {showEditor && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: showPreview ? '1px solid var(--border)' : 'none', overflow: 'hidden', minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>MARKDOWN</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{markdown.length} chars</span>
+                </div>
+                <textarea
+                  value={markdown}
+                  onChange={e => setMarkdown(e.target.value)}
+                  placeholder="Cole ou escreva seu markdown aqui…"
+                  spellCheck={false}
+                  style={{ flex: 1, padding: '16px 18px', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, border: 'none', outline: 'none', resize: 'none', overflowY: 'auto' }}
+                />
+              </div>
+            )}
+
+            {/* Preview pane */}
+            {showPreview && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: 'var(--bg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>PRÉVIA</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>
+                    {wordCount} palavras
+                  </span>
+                </div>
+                <div
+                  ref={previewRef}
+                  className="markdown-body"
+                  onClick={handleAnchorClick}
+                  dangerouslySetInnerHTML={{ __html: html }}
+                />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'saved' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+          {loading && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '32px 0', textAlign: 'center' }}>
+              Carregando…
+            </div>
+          )}
+          {!loading && entries.length === 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '48px 0', color: 'var(--text-muted)' }}>
+              <Clock size={28} strokeWidth={1.5} />
+              <span style={{ fontSize: 13 }}>Nenhum markdown salvo ainda.</span>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Use o botão "Salvar" no editor para guardar um documento aqui.</span>
+            </div>
+          )}
+          {!loading && entries.map(entry => (
+            <div
+              key={entry.id}
+              style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <FileText size={12} color="var(--accent)" />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {entry.title}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                    · {formatDate(entry.savedAt)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    className="btn ghost"
+                    onClick={() => handleLoadEntry(entry)}
+                    title="Carregar no editor"
+                    style={{ padding: '3px 8px', fontSize: 11, gap: 4 }}
+                  >
+                    <CornerDownLeft size={12} />
+                    Carregar
+                  </button>
+                  <button
+                    className="btn ghost"
+                    onClick={() => remove(entry.id)}
+                    title="Excluir"
+                    style={{ padding: '3px 8px', fontSize: 11 }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+              <div style={{ padding: '10px 14px', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 72, overflow: 'hidden' }}>
+                {entry.content.slice(0, 200)}{entry.content.length > 200 ? '…' : ''}
+              </div>
+              <div style={{ padding: '4px 14px 8px', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>
+                {entry.content.split('\n').length} linhas · {entry.content.length} chars
+              </div>
+            </div>
           ))}
         </div>
-
-        <div style={{ flex: 1 }} />
-
-        {fileName && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-            <FileText size={11} />
-            {fileName}
-          </span>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.txt,.markdown"
-          style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
-        />
-        <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => fileInputRef.current?.click()}>
-          <Upload size={13} /> Upload
-        </button>
-        <button className="btn ghost" style={{ fontSize: 12 }} onClick={() => copy(markdown)} disabled={!markdown}>
-          {copied ? <Check size={13} color="var(--accent)" /> : <Copy size={13} />}
-          {copied ? 'Copiado!' : 'Copiar MD'}
-        </button>
-        <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShare} disabled={!markdown}>
-          {copiedButton === 'share' ? <Check size={13} color="var(--accent)" /> : <Share2 size={13} />}
-          {copiedButton === 'share' ? 'Link copiado!' : 'Compartilhar'}
-        </button>
-        <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleShareShort} disabled={!markdown || shortening}>
-          {copiedButton === 'short' ? <Check size={13} color="var(--accent)" /> : <Link size={13} />}
-          {shortButtonLabel}
-        </button>
-        <DownloadButton data={markdown || null} filename={fileName ?? 'documento.md'} mimeType="text/markdown" label="Baixar .md" />
-        <button className="btn ghost" style={{ fontSize: 12 }} onClick={handleExportPDF} disabled={!markdown}>
-          <FileDown size={13} /> PDF
-        </button>
-        <button
-          className="btn ghost"
-          style={{ padding: '6px 8px' }}
-          onClick={() => { setMarkdown(''); setFileName(null) }}
-          disabled={!markdown}
-          title="Limpar"
-        >
-          <Trash2 size={13} />
-        </button>
-      </div>
-
-      {/* Split pane */}
-      <div
-        style={{ flex: 1, minHeight: 0, display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}
-      >
-        {/* Editor pane */}
-        {showEditor && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: showPreview ? '1px solid var(--border)' : 'none', overflow: 'hidden', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>MARKDOWN</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{markdown.length} chars</span>
-            </div>
-            <textarea
-              value={markdown}
-              onChange={e => setMarkdown(e.target.value)}
-              placeholder="Cole ou escreva seu markdown aqui…"
-              spellCheck={false}
-              style={{ flex: 1, padding: '16px 18px', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, border: 'none', outline: 'none', resize: 'none', overflowY: 'auto' }}
-            />
-          </div>
-        )}
-
-        {/* Preview pane */}
-        {showPreview && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: 'var(--bg)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>PRÉVIA</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>
-                {wordCount} palavras
-              </span>
-            </div>
-            <div
-              ref={previewRef}
-              className="markdown-body"
-              onClick={handleAnchorClick}
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </div>
-        )}
-      </div>
+      )}
     </ToolLayout>
   )
 }
