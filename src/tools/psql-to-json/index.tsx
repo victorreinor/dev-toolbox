@@ -110,7 +110,7 @@ export default function PsqlToJson() {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" onClick={convert} disabled={processing}>
-          {processing ? 'Convertendo…' : <>Converter <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.55, fontFamily: 'var(--font-mono)', fontWeight: 400 }}>⌘↵</span></>}
+          {processing ? 'Convertendo…' : <><span style={{ marginRight: 6, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Converter</>}
         </button>
         <OutputActions
           data={output}

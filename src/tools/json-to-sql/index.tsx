@@ -120,7 +120,7 @@ export default function JsonToSql() {
       )}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Gerar SQL <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.55, fontFamily: 'var(--font-mono)', fontWeight: 400 }}>⌘↵</span></button>
+        <button className="btn primary" onClick={convert}><span style={{ marginRight: 6, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Gerar SQL</button>
         <OutputActions
           data={sqlOutput}
           filename="output.sql"
