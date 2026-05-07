@@ -266,7 +266,7 @@ export default function Base64Tool() {
               disabled={processing}
             >
               {processing && <span className="spinner" />}
-              {processing ? 'Decodificando…' : <><span style={{ marginRight: 4, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Decodificar</>}
+              {processing ? 'Decodificando…' : <><span style={{ marginRight: 2, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Decodificar</>}
             </button>
             {decodeResult && (
               <button className="btn ghost" onClick={handleClear}>Limpar</button>

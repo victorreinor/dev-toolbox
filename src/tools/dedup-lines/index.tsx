@@ -94,7 +94,7 @@ export default function DedupLines() {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" onClick={process} disabled={processing}>
-          {processing ? 'Processando…' : <><span style={{ marginRight: 4, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Remover Duplicatas</>}
+          {processing ? 'Processando…' : <><span style={{ marginRight: 2, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Remover Duplicatas</>}
         </button>
         <OutputActions
           data={output}
