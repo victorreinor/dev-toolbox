@@ -292,6 +292,10 @@ export default function MarkdownPreview() {
   const [splitPct, setSplitPct] = useState(50)
   const [showToc, setShowToc] = useState(false)
   const splitContainerRef = useRef<HTMLDivElement>(null)
+  const splitPctRef = useRef(splitPct)
+  useEffect(() => { splitPctRef.current = splitPct }, [splitPct])
+  const dragCleanupRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => { dragCleanupRef.current?.() }, [])
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { entries, loading, save, remove } = useMarkdownHistory()
@@ -474,19 +478,21 @@ export default function MarkdownPreview() {
     const container = splitContainerRef.current
     if (!container) return
     const startX = e.clientX
-    const startPct = splitPct
+    const startPct = splitPctRef.current
     const totalWidth = container.getBoundingClientRect().width
     const onMove = (ev: MouseEvent) => {
       const newPct = startPct + ((ev.clientX - startX) / totalWidth) * 100
       setSplitPct(Math.min(Math.max(newPct, 20), 80))
     }
-    const onUp = () => {
+    const cleanup = () => {
       document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
+      document.removeEventListener('mouseup', cleanup)
+      dragCleanupRef.current = null
     }
+    dragCleanupRef.current = cleanup
     document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }, [splitPct])
+    document.addEventListener('mouseup', cleanup)
+  }, [])
 
   const showEditor = viewMode !== 'preview'
   const shortButtonLabel = shortening ? 'Encurtando…' : copiedButton === 'short' ? 'Copiado!' : 'Link curto'
@@ -588,12 +594,10 @@ export default function MarkdownPreview() {
             </button>
           </div>
 
-          {/* Split pane */}
           <div
             ref={splitContainerRef}
             style={{ flex: 1, minHeight: 0, display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}
           >
-            {/* Editor pane */}
             {showEditor && (
               <div style={{ width: showPreview ? `${splitPct}%` : '100%', flex: showPreview ? 'none' : 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
@@ -610,7 +614,6 @@ export default function MarkdownPreview() {
               </div>
             )}
 
-            {/* Resizer */}
             {showEditor && showPreview && (
               <div
                 onMouseDown={onDividerMouseDown}
@@ -618,7 +621,6 @@ export default function MarkdownPreview() {
               />
             )}
 
-            {/* Preview pane */}
             {showPreview && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: 'var(--bg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
@@ -651,9 +653,9 @@ export default function MarkdownPreview() {
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
                   {showToc && toc.length > 0 && (
                     <div style={{ width: 180, flexShrink: 0, borderRight: '1px solid var(--border)', overflowY: 'auto', background: 'var(--surface)', padding: '10px 0' }}>
-                      {toc.map((item, i) => (
+                      {toc.map((item) => (
                         <button
-                          key={i}
+                          key={item.id}
                           onClick={() => {
                             const el = previewRef.current?.querySelector(`#${CSS.escape(item.id)}`)
                             el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
