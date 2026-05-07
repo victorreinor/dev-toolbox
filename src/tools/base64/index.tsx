@@ -11,7 +11,6 @@ import { useWorker } from '../../hooks/useWorker'
 import { useFileStream } from '../../hooks/useFileStream'
 import { usePageDrop } from '../../hooks/usePageDrop'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
-import { Tooltip } from '../../components/Tooltip'
 
 type WorkerRequest =
   | { type: 'encode-start'; mimeType: string }
@@ -261,16 +260,14 @@ export default function Base64Tool() {
           />
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <Tooltip shortcut="⌘↵">
-              <button
-                className="btn primary"
-                onClick={handleDecode}
-                disabled={processing}
-              >
-                {processing && <span className="spinner" />}
-                {processing ? 'Decodificando…' : 'Decodificar'}
-              </button>
-            </Tooltip>
+            <button
+              className="btn primary"
+              onClick={handleDecode}
+              disabled={processing}
+            >
+              {processing && <span className="spinner" />}
+              {processing ? 'Decodificando…' : <>Decodificar <kbd style={{ marginLeft: 4, fontSize: 10, padding: '1px 3px', border: '1px solid currentColor', borderRadius: 2, opacity: 0.55, fontFamily: 'var(--font-mono)' }}>⌘↵</kbd></>}
+            </button>
             {decodeResult && (
               <button className="btn ghost" onClick={handleClear}>Limpar</button>
             )}

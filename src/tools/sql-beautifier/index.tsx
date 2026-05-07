@@ -6,7 +6,6 @@ import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
 import { useToast } from '../../components/Toast'
 import { useWorker } from '../../hooks/useWorker'
-import { Tooltip } from '../../components/Tooltip'
 
 interface WorkerRequest {
   type: 'format'
@@ -179,11 +178,9 @@ export default function SqlBeautifier() {
       />
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <Tooltip shortcut="⌘↵">
-          <button className="btn primary" onClick={format} disabled={processing}>
-            {processing ? 'Formatando…' : 'Formatar SQL'}
-          </button>
-        </Tooltip>
+        <button className="btn primary" onClick={format} disabled={processing}>
+          {processing ? 'Formatando…' : <>Formatar SQL <kbd style={{ marginLeft: 4, fontSize: 10, padding: '1px 3px', border: '1px solid currentColor', borderRadius: 2, opacity: 0.55, fontFamily: 'var(--font-mono)' }}>⌘↵</kbd></>}
+        </button>
         <OutputActions
           data={output}
           filename="query.sql"
