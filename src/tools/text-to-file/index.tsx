@@ -47,13 +47,18 @@ export default function TextToFile() {
   const [currentLine, setCurrentLine] = useState(1)
   const [copiedButton, setCopiedButton] = useState<'share' | 'short' | null>(null)
   const [shortening, setShortening] = useState(false)
+  const [savedFile, setSavedFile] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { entries, loading, save, remove } = useTextHistory()
 
   useEffect(() => {
-    return () => { if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current) }
+    return () => {
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -150,8 +155,10 @@ export default function TextToFile() {
   const handleSave = useCallback(async () => {
     if (!text) { toast('Nenhum texto para salvar', 'error'); return }
     await save({ filename: filename || 'arquivo', ext: activeExt, text })
-    toast('Salvo no histórico!', 'success')
-  }, [text, filename, activeExt, save, toast])
+    setSavedFile(true)
+    clearTimeout(savedTimeoutRef.current ?? undefined)
+    savedTimeoutRef.current = setTimeout(() => setSavedFile(false), 2000)
+  }, [text, filename, activeExt, save])
 
   const handleLoadEntry = useCallback((entry: HistoryEntry) => {
     setText(entry.text)
@@ -192,7 +199,7 @@ export default function TextToFile() {
           EDITOR
         </button>
         <button onClick={() => setActiveTab('history')} style={{ ...tabStyle(activeTab === 'history'), display: 'flex', alignItems: 'center', gap: 6 }}>
-          HISTÓRICO
+          SALVO
           {entries.length > 0 && (
             <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
               {entries.length}
@@ -298,8 +305,8 @@ export default function TextToFile() {
               Baixar {activeExt}
             </button>
             <button className="btn ghost" onClick={handleSave} disabled={!text} title="Salvar no histórico local">
-              <Save size={14} />
-              Salvar
+              {savedFile ? <Check size={14} color="var(--accent)" /> : <Save size={14} />}
+              {savedFile ? 'Salvo!' : 'Salvar'}
             </button>
             <button className="btn ghost" onClick={handleShare} disabled={!text}>
               {copiedButton === 'share' ? <Check size={14} color="var(--accent)" /> : <Share2 size={14} />}
