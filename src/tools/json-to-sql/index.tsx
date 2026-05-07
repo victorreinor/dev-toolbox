@@ -8,6 +8,7 @@ import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { useJsonFileInput } from '../../hooks/useJsonFileInput'
 import { generateSQL, type SqlDialect, type SqlOperation } from './processor'
+import { Tooltip } from '../../components/Tooltip'
 
 const OPERATIONS: SqlOperation[] = ['INSERT', 'UPDATE', 'UPSERT', 'DELETE']
 const DIALECTS: { label: string; value: SqlDialect }[] = [
@@ -120,7 +121,9 @@ export default function JsonToSql() {
       )}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Gerar SQL</button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={convert}>Gerar SQL</button>
+        </Tooltip>
         <OutputActions
           data={sqlOutput}
           filename="output.sql"

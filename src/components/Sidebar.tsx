@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Search, ChevronLeft, ChevronRight, Terminal, Bug, Lightbulb, Sun, Moon } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Terminal, Bug, Lightbulb, Sun, Moon, RotateCcw } from 'lucide-react'
 import { registry } from '../registry'
 import type { ToolCategory } from '../types'
 
@@ -21,10 +21,13 @@ interface SidebarProps {
   onSearch: () => void
   theme: 'dark' | 'light'
   onToggleTheme: () => void
+  accentColor: string
+  onAccentChange: (color: string) => void
 }
 
-export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
+export function Sidebar({ onSearch, theme, onToggleTheme, accentColor, onAccentChange }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const colorInputRef = useRef<HTMLInputElement>(null)
 
   // Group tools by category
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof registry>>((acc, cat) => {
@@ -147,13 +150,45 @@ export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
               <span className="mono" style={{ fontSize: 10, color: 'var(--text-dim)' }}>
                 {registry.length} ferramentas
               </span>
-              <button
-                onClick={onToggleTheme}
-                style={themeToggleStyle}
-                title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-              >
-                {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  ref={colorInputRef}
+                  type="color"
+                  value={accentColor || '#4afa7b'}
+                  onChange={e => onAccentChange(e.target.value)}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => colorInputRef.current?.click()}
+                  style={{ ...themeToggleStyle, padding: '3px 5px' }}
+                  title="Cor de destaque"
+                >
+                  <div style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    background: accentColor || 'var(--accent)',
+                    border: '1px solid var(--border-2)',
+                    flexShrink: 0,
+                  }} />
+                </button>
+                {accentColor && (
+                  <button
+                    onClick={() => onAccentChange('')}
+                    style={{ ...themeToggleStyle, padding: '3px 5px' }}
+                    title="Restaurar cor padrão"
+                  >
+                    <RotateCcw size={11} />
+                  </button>
+                )}
+                <button
+                  onClick={onToggleTheme}
+                  style={themeToggleStyle}
+                  title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+                >
+                  {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -176,6 +211,19 @@ export function Sidebar({ onSearch, theme, onToggleTheme }: SidebarProps) {
             >
               <Lightbulb size={13} />
             </a>
+            <button
+              onClick={() => colorInputRef.current?.click()}
+              style={{ ...iconFooterLinkStyle, background: 'none', border: 'none', cursor: 'pointer' }}
+              title="Cor de destaque"
+            >
+              <div style={{
+                width: 13,
+                height: 13,
+                borderRadius: '50%',
+                background: accentColor || 'var(--accent)',
+                border: '1px solid var(--border-2)',
+              }} />
+            </button>
             <button
               onClick={onToggleTheme}
               style={{ ...iconFooterLinkStyle, background: 'none', border: 'none', cursor: 'pointer' }}

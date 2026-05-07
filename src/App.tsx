@@ -220,11 +220,32 @@ function Layout() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark'
   })
+  const [accentColor, setAccentColor] = useState<string>(() => localStorage.getItem('accentColor') ?? '')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (!accentColor) {
+      root.style.removeProperty('--accent')
+      root.style.removeProperty('--accent-dim')
+      root.style.removeProperty('--accent-border')
+      root.style.removeProperty('--accent-glow')
+      localStorage.removeItem('accentColor')
+      return
+    }
+    const r = parseInt(accentColor.slice(1, 3), 16)
+    const g = parseInt(accentColor.slice(3, 5), 16)
+    const b = parseInt(accentColor.slice(5, 7), 16)
+    root.style.setProperty('--accent', accentColor)
+    root.style.setProperty('--accent-dim', `rgba(${r},${g},${b},0.08)`)
+    root.style.setProperty('--accent-border', `rgba(${r},${g},${b},0.25)`)
+    root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.15)`)
+    localStorage.setItem('accentColor', accentColor)
+  }, [accentColor])
 
   const toggleTheme = useCallback(() => {
     setTheme(t => (t === 'dark' ? 'light' : 'dark'))
@@ -232,7 +253,7 @@ function Layout() {
 
   return (
     <div style={layoutStyle}>
-      <Sidebar onSearch={() => setSearchOpen(true)} theme={theme} onToggleTheme={toggleTheme} />
+      <Sidebar onSearch={() => setSearchOpen(true)} theme={theme} onToggleTheme={toggleTheme} accentColor={accentColor} onAccentChange={setAccentColor} />
       <main style={mainStyle}>
         <Routes>
           <Route path="/" element={<Home />} />

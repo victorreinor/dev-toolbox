@@ -5,6 +5,7 @@ import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
 import { useToast } from '../../components/Toast'
 import { useWorker } from '../../hooks/useWorker'
+import { Tooltip } from '../../components/Tooltip'
 
 type DisplayMode = 'auto' | 'tabular' | 'expanded'
 
@@ -109,9 +110,11 @@ export default function PsqlToJson() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert} disabled={processing}>
-          {processing ? 'Convertendo…' : 'Converter'}
-        </button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={convert} disabled={processing}>
+            {processing ? 'Convertendo…' : 'Converter'}
+          </button>
+        </Tooltip>
         <OutputActions
           data={output}
           filename={jsObject ? 'output.js' : 'output.json'}

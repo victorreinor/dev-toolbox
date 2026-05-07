@@ -5,6 +5,7 @@ import { CodeEditor } from '../../components/CodeEditor'
 import { OutputActions } from '../../components/OutputActions'
 import { useToast } from '../../components/Toast'
 import { useWorker } from '../../hooks/useWorker'
+import { Tooltip } from '../../components/Tooltip'
 
 interface WorkerRequest {
   type: 'dedup'
@@ -93,9 +94,11 @@ export default function DedupLines() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={process} disabled={processing}>
-          {processing ? 'Processando…' : 'Remover Duplicatas'}
-        </button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={process} disabled={processing}>
+            {processing ? 'Processando…' : 'Remover Duplicatas'}
+          </button>
+        </Tooltip>
         <OutputActions
           data={output}
           filename="output.txt"

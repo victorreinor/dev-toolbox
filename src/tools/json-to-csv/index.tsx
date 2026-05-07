@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast'
 import { useJsonFileInput } from '../../hooks/useJsonFileInput'
 import { DELIMITERS } from '../../constants/delimiters'
 import Papa from 'papaparse'
+import { Tooltip } from '../../components/Tooltip'
 
 const UTF8_BOM = '\uFEFF'
 
@@ -97,7 +98,9 @@ export default function JsonToCsv() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Converter</button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={convert}>Converter</button>
+        </Tooltip>
         <OutputActions
           data={csvOutput}
           filename="output.csv"

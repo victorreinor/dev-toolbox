@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import hljs from 'highlight.js/lib/common'
-import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link, Save, Clock, CornerDownLeft, Search } from 'lucide-react'
+import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link, Save, Clock, CornerDownLeft, Search, List } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
@@ -17,6 +17,12 @@ import { useMarkdownHistory, type MarkdownEntry } from './useMarkdownHistory'
 
 type ViewMode = 'editor' | 'split' | 'preview'
 type ActiveTab = 'editor' | 'saved'
+
+interface TocItem {
+  level: number
+  text: string
+  id: string
+}
 
 function formatDate(ts: number) {
   const d = new Date(ts)
@@ -283,6 +289,9 @@ export default function MarkdownPreview() {
   const [shortening, setShortening] = useState(false)
   const [savedMd, setSavedMd] = useState(false)
   const [search, setSearch] = useState('')
+  const [splitPct, setSplitPct] = useState(50)
+  const [showToc, setShowToc] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement>(null)
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { entries, loading, save, remove } = useMarkdownHistory()
@@ -364,6 +373,18 @@ export default function MarkdownPreview() {
     const el = previewRef.current?.querySelector(`#${CSS.escape(id)}`)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
+
+  const toc = useMemo<TocItem[]>(() => {
+    const items: TocItem[] = []
+    const regex = /^(#{1,4})\s+(.+)$/gm
+    let match
+    while ((match = regex.exec(markdown)) !== null) {
+      const raw = match[2].trim()
+      const plain = raw.replace(/[*_~`[\]]/g, '').trim()
+      items.push({ level: match[1].length, text: plain, id: slugify(plain) })
+    }
+    return items
+  }, [markdown])
 
   const { html, wordCount } = useMemo(() => {
     try {
@@ -447,6 +468,25 @@ export default function MarkdownPreview() {
     setActiveTab('editor')
     toast(`"${entry.title}" carregado`, 'success')
   }, [toast])
+
+  const onDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const container = splitContainerRef.current
+    if (!container) return
+    const startX = e.clientX
+    const startPct = splitPct
+    const totalWidth = container.getBoundingClientRect().width
+    const onMove = (ev: MouseEvent) => {
+      const newPct = startPct + ((ev.clientX - startX) / totalWidth) * 100
+      setSplitPct(Math.min(Math.max(newPct, 20), 80))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [splitPct])
 
   const showEditor = viewMode !== 'preview'
   const shortButtonLabel = shortening ? 'Encurtando…' : copiedButton === 'short' ? 'Copiado!' : 'Link curto'
@@ -550,11 +590,12 @@ export default function MarkdownPreview() {
 
           {/* Split pane */}
           <div
+            ref={splitContainerRef}
             style={{ flex: 1, minHeight: 0, display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}
           >
             {/* Editor pane */}
             {showEditor && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: showPreview ? '1px solid var(--border)' : 'none', overflow: 'hidden', minWidth: 0 }}>
+              <div style={{ width: showPreview ? `${splitPct}%` : '100%', flex: showPreview ? 'none' : 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', flexShrink: 0 }}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>MARKDOWN</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{markdown.length} chars</span>
@@ -569,21 +610,77 @@ export default function MarkdownPreview() {
               </div>
             )}
 
+            {/* Resizer */}
+            {showEditor && showPreview && (
+              <div
+                onMouseDown={onDividerMouseDown}
+                style={{ width: 4, flexShrink: 0, background: 'var(--border)', cursor: 'col-resize', zIndex: 1 }}
+              />
+            )}
+
             {/* Preview pane */}
             {showPreview && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, background: 'var(--bg)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>PRÉVIA</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>PRÉVIA</span>
+                    {toc.length > 0 && (
+                      <button
+                        onClick={() => setShowToc(t => !t)}
+                        title="Índice"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          padding: '1px 5px',
+                          background: showToc ? 'var(--accent-dim)' : 'transparent',
+                          border: `1px solid ${showToc ? 'var(--accent-border)' : 'var(--border-2)'}`,
+                          borderRadius: 'var(--radius)',
+                          color: showToc ? 'var(--accent)' : 'var(--text-dim)',
+                          cursor: 'pointer',
+                          fontSize: 10,
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        <List size={10} /> TOC
+                      </button>
+                    )}
+                  </div>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>
                     {wordCount} palavras
                   </span>
                 </div>
-                <div
-                  ref={previewRef}
-                  className="markdown-body"
-                  onClick={handleAnchorClick}
-                  dangerouslySetInnerHTML={{ __html: html }}
-                />
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                  {showToc && toc.length > 0 && (
+                    <div style={{ width: 180, flexShrink: 0, borderRight: '1px solid var(--border)', overflowY: 'auto', background: 'var(--surface)', padding: '10px 0' }}>
+                      {toc.map((item, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            const el = previewRef.current?.querySelector(`#${CSS.escape(item.id)}`)
+                            el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          }}
+                          style={{
+                            display: 'block', width: '100%', textAlign: 'left',
+                            padding: `3px 8px 3px ${(item.level - 1) * 10 + 8}px`,
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            fontSize: 10, fontFamily: 'var(--font-mono)',
+                            color: item.level <= 2 ? 'var(--text-muted)' : 'var(--text-dim)',
+                            fontWeight: item.level === 1 ? 600 : 400,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {item.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div
+                    ref={previewRef}
+                    className="markdown-body"
+                    onClick={handleAnchorClick}
+                    dangerouslySetInnerHTML={{ __html: html }}
+                    style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}
+                  />
+                </div>
               </div>
             )}
           </div>

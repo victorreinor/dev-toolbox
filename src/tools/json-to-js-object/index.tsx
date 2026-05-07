@@ -8,6 +8,7 @@ import { OutputActions } from '../../components/OutputActions'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { useJsonFileInput } from '../../hooks/useJsonFileInput'
+import { Tooltip } from '../../components/Tooltip'
 
 type Direction = 'json-to-js' | 'js-to-json'
 type Mode = 'text' | 'file'
@@ -143,7 +144,9 @@ export default function JsonJsObject() {
       )}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Converter</button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={convert}>Converter</button>
+        </Tooltip>
         {output && (
           <OutputActions
             data={output}

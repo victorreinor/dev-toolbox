@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast'
 import { useJsonFileInput } from '../../hooks/useJsonFileInput'
 import XlsxWorker from '../../workers/xlsxParser.worker?worker'
 import { useWorker } from '../../hooks/useWorker'
+import { Tooltip } from '../../components/Tooltip'
 
 interface WorkerResponse {
   ok: boolean
@@ -101,10 +102,12 @@ export default function JsonToXlsx() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={process} disabled={processing}>
-          {processing && <span className="spinner" />}
-          {processing ? 'Processando…' : 'Converter'}
-        </button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={process} disabled={processing}>
+            {processing && <span className="spinner" />}
+            {processing ? 'Processando…' : 'Converter'}
+          </button>
+        </Tooltip>
         <DownloadButton data={outputBlob} filename="output.xlsx" label="Baixar XLSX" />
         {outputBlob && (
           <button className="btn ghost" onClick={() => { setOutputBlob(null); setPreview([]) }}>Limpar</button>

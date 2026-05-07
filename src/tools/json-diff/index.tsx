@@ -5,6 +5,7 @@ import { CodeEditor } from '../../components/CodeEditor'
 import { useToast } from '../../components/Toast'
 import { useWorker } from '../../hooks/useWorker'
 import { useSubmitOnCmdEnter } from '../../hooks/useSubmitOnCmdEnter'
+import { Tooltip } from '../../components/Tooltip'
 
 interface DiffLine {
   text: string
@@ -169,9 +170,11 @@ export default function JsonDiff() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button className="btn primary" onClick={compare} disabled={processing}>
-          {processing ? 'Comparando…' : 'Comparar'}
-        </button>
+        <Tooltip shortcut="⌘↵">
+          <button className="btn primary" onClick={compare} disabled={processing}>
+            {processing ? 'Comparando…' : 'Comparar'}
+          </button>
+        </Tooltip>
         <button className="btn" onClick={swap} title="Trocar A ↔ B" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <ArrowLeftRight size={13} />
           Trocar
