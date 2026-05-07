@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import hljs from 'highlight.js/lib/common'
-import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link, Save, Clock, CornerDownLeft } from 'lucide-react'
+import { AlignLeft, Columns2, Eye, Upload, Copy, Check, Trash2, FileText, FileDown, Share2, Link, Save, Clock, CornerDownLeft, Search } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
@@ -281,9 +281,15 @@ export default function MarkdownPreview() {
   const [copiedButton, setCopiedButton] = useState<'share' | 'short' | null>(null)
   const [shortening, setShortening] = useState(false)
   const [savedMd, setSavedMd] = useState(false)
+  const [search, setSearch] = useState('')
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { entries, loading, save, remove } = useMarkdownHistory()
+  const filteredEntries = useMemo(() => {
+    const q = search.toLowerCase()
+    if (!q) return entries
+    return entries.filter(e => e.title.toLowerCase().includes(q) || e.content.toLowerCase().includes(q))
+  }, [search, entries])
 
   useEffect(() => {
     return () => {
@@ -585,6 +591,19 @@ export default function MarkdownPreview() {
 
       {activeTab === 'saved' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
+          {!loading && entries.length > 0 && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input
+                className="input"
+                style={{ paddingLeft: 30, fontSize: 12 }}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar pelo título ou conteúdo…"
+              />
+            </div>
+          )}
           {loading && (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '32px 0', textAlign: 'center' }}>
               Carregando…
@@ -597,7 +616,13 @@ export default function MarkdownPreview() {
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Use o botão "Salvar" no editor para guardar um documento aqui.</span>
             </div>
           )}
-          {!loading && entries.map(entry => (
+          {!loading && entries.length > 0 && filteredEntries.length === 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '48px 0', color: 'var(--text-muted)' }}>
+              <Search size={24} strokeWidth={1.5} />
+              <span style={{ fontSize: 13 }}>Nenhum resultado para "{search}"</span>
+            </div>
+          )}
+          {!loading && filteredEntries.map(entry => (
             <div
               key={entry.id}
               style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', background: 'var(--surface)' }}

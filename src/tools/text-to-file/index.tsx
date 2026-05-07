@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Download, Clipboard, Trash2, FileDown, Share2, Check, Link, Save, Clock, CornerDownLeft } from 'lucide-react'
+import { Download, Clipboard, Trash2, FileDown, Share2, Check, Link, Save, Clock, CornerDownLeft, Search } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { useToast } from '../../components/Toast'
 import { compressToBase64url, decompressFromBase64url } from '../../utils/compression'
@@ -48,11 +48,17 @@ export default function TextToFile() {
   const [copiedButton, setCopiedButton] = useState<'share' | 'short' | null>(null)
   const [shortening, setShortening] = useState(false)
   const [savedFile, setSavedFile] = useState(false)
+  const [search, setSearch] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { entries, loading, save, remove } = useTextHistory()
+  const filteredEntries = useMemo(() => {
+    const q = search.toLowerCase()
+    if (!q) return entries
+    return entries.filter(e => `${e.filename}${e.ext}`.toLowerCase().includes(q) || e.text.toLowerCase().includes(q))
+  }, [search, entries])
 
   useEffect(() => {
     return () => {
@@ -334,6 +340,19 @@ export default function TextToFile() {
 
       {activeTab === 'history' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {!loading && entries.length > 0 && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input
+                className="input"
+                style={{ paddingLeft: 30, fontSize: 12 }}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Pesquisar pelo nome ou conteúdo…"
+              />
+            </div>
+          )}
           {loading && (
             <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '32px 0', textAlign: 'center' }}>
               Carregando…
@@ -346,7 +365,13 @@ export default function TextToFile() {
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Use o botão "Salvar" no editor para guardar um texto aqui.</span>
             </div>
           )}
-          {!loading && entries.map(entry => {
+          {!loading && entries.length > 0 && filteredEntries.length === 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '48px 0', color: 'var(--text-muted)' }}>
+              <Search size={24} strokeWidth={1.5} />
+              <span style={{ fontSize: 13 }}>Nenhum resultado para "{search}"</span>
+            </div>
+          )}
+          {!loading && filteredEntries.map(entry => {
             const entryLines = entry.text.split('\n').length
             return <div
               key={entry.id}
