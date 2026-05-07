@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Copy, Check, AlertTriangle, CheckCircle, XCircle, Minimize2 } from 'lucide-react'
 import { ToolLayout } from '../../components/ToolLayout'
+import { CodeEditor } from '../../components/CodeEditor'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 
 interface ServiceLimit {
@@ -134,12 +135,12 @@ export default function StringSizeTool() {
       badge="validator"
     >
       <div style={editorWrapStyle}>
-        <textarea
-          style={textareaStyle}
+        <CodeEditor
+          bare
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={setInput}
           placeholder={PLACEHOLDER}
-          spellCheck={false}
+          minHeight={220}
         />
 
         <div style={metaBarStyle}>
@@ -238,20 +239,6 @@ const editorWrapStyle: React.CSSProperties = {
   background: 'var(--surface)',
 }
 
-const textareaStyle: React.CSSProperties = {
-  width: '100%',
-  minHeight: 220,
-  padding: '14px 16px',
-  fontFamily: 'var(--font-mono)',
-  fontSize: 13,
-  lineHeight: 1.6,
-  color: 'var(--text)',
-  background: 'transparent',
-  border: 'none',
-  outline: 'none',
-  resize: 'vertical',
-  boxSizing: 'border-box',
-}
 
 const metaBarStyle: React.CSSProperties = {
   display: 'flex',

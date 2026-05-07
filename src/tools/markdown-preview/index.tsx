@@ -8,6 +8,7 @@ import { ToolLayout } from '../../components/ToolLayout'
 import { DownloadButton } from '../../components/DownloadButton'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
+import { CodeEditor } from '../../components/CodeEditor'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
 import { usePageDrop } from '../../hooks/usePageDrop'
 import { compressToBase64url, decompressFromBase64url } from '../../utils/compression'
@@ -558,12 +559,12 @@ export default function MarkdownPreview() {
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>MARKDOWN</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-dim)' }}>{markdown.length} chars</span>
                 </div>
-                <textarea
+                <CodeEditor
+                  bare
                   value={markdown}
-                  onChange={e => setMarkdown(e.target.value)}
+                  onChange={setMarkdown}
                   placeholder="Cole ou escreva seu markdown aqui…"
-                  spellCheck={false}
-                  style={{ flex: 1, padding: '16px 18px', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, border: 'none', outline: 'none', resize: 'none', overflowY: 'auto' }}
+                  minHeight={0}
                 />
               </div>
             )}
