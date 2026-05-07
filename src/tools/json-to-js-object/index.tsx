@@ -143,7 +143,7 @@ export default function JsonJsObject() {
       )}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}><span style={{ marginRight: 6, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Converter</button>
+        <button className="btn primary" onClick={convert}><span style={{ marginRight: 4, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Converter</button>
         {output && (
           <OutputActions
             data={output}

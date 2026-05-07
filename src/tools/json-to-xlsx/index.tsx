@@ -103,7 +103,7 @@ export default function JsonToXlsx() {
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" onClick={process} disabled={processing}>
           {processing && <span className="spinner" />}
-          {processing ? 'Processando…' : <><span style={{ marginRight: 6, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Converter</>}
+          {processing ? 'Processando…' : <><span style={{ marginRight: 4, fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>⌘↵</span> Converter</>}
         </button>
         <DownloadButton data={outputBlob} filename="output.xlsx" label="Baixar XLSX" />
         {outputBlob && (
