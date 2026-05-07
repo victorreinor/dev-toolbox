@@ -51,11 +51,11 @@ marked.use({
       if (lang && resolvedLang) {
         try {
           highlighted = hljs.highlight(text, { language: lang, ignoreIllegals: true }).value
-        } catch {}
+        } catch { }
       } else if (!lang) {
         try {
           highlighted = hljs.highlightAuto(text).value
-        } catch {}
+        } catch { }
       }
       const langAttr = lang ? ` class="language-${lang}"` : ''
       const langLabel = lang ? `<span class="code-block-lang">${escapeHtml(lang)}</span>` : ''

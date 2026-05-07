@@ -18,7 +18,6 @@ function jsonToJsObject(data: unknown): string {
 }
 
 function jsObjectToJson(input: string): string {
-  // eslint-disable-next-line no-new-func
   const obj = new Function('return (' + input.trim() + ')')()
   return JSON.stringify(obj, null, 2)
 }

@@ -21,11 +21,11 @@ function calcEntropy(length: number, poolSize: number): number {
 }
 
 function getStrength(bits: number): { level: StrengthLevel; color: string; pct: number } {
-  if (bits < 40)  return { level: 'Muito fraca', color: '#ff4545', pct: 15 }
-  if (bits < 60)  return { level: 'Fraca',       color: '#f5a623', pct: 35 }
-  if (bits < 80)  return { level: 'Razoável',    color: '#f5e623', pct: 55 }
-  if (bits < 100) return { level: 'Forte',       color: '#4afa7b', pct: 78 }
-  return            { level: 'Muito forte',   color: '#4afa7b', pct: 100 }
+  if (bits < 40) return { level: 'Muito fraca', color: '#ff4545', pct: 15 }
+  if (bits < 60) return { level: 'Fraca', color: '#f5a623', pct: 35 }
+  if (bits < 80) return { level: 'Razoável', color: '#f5e623', pct: 55 }
+  if (bits < 100) return { level: 'Forte', color: '#4afa7b', pct: 78 }
+  return { level: 'Muito forte', color: '#4afa7b', pct: 100 }
 }
 
 function buildPool(
@@ -37,9 +37,9 @@ function buildPool(
   excludeAmbiguous: boolean,
 ): string {
   let pool = ''
-  if (useLower)   pool += CHARS.lower
-  if (useUpper)   pool += CHARS.upper
-  if (useDigits)  pool += CHARS.digits
+  if (useLower) pool += CHARS.lower
+  if (useUpper) pool += CHARS.upper
+  if (useDigits) pool += CHARS.digits
   if (useSymbols) pool += (customSymbols || CHARS.symbols)
   if (excludeAmbiguous) pool = pool.split('').filter(c => !CHARS.ambiguous.includes(c)).join('')
   return pool

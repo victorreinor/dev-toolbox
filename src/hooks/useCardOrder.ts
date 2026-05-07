@@ -31,7 +31,7 @@ export function useCardOrder(pinnedIds: string[]) {
   )
 
   // pinnedIds.join is a stable string dep; fires only when the set of favorites changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     setPinnedOrder(prev => {
       const next = reconcile(prev, pinnedIds)

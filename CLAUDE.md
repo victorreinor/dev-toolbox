@@ -27,6 +27,10 @@ npm run preview    # Preview production build
 
 There is no test suite currently.
 
+## Git Commits
+
+Never add `Co-Authored-By` trailers to commits in this repository.
+
 ## Architecture
 
 **DevUtils** is a client-side SPA for data conversion (JSON↔CSV↔XLSX↔SQL) and document generation (CPF/CNPJ). All processing runs in the browser — no data leaves the device.
@@ -40,6 +44,36 @@ Each tool lives in `src/tools/<tool-id>/` and exports:
 
 `src/registry.ts` aggregates all `ToolMeta` objects and exports `getToolById()` and `searchTools()`. Adding a new tool requires creating the module and registering it in `registry.ts`.
 
+Tool categories (`ToolCategory` type): `'converter' | 'generator' | 'formatter' | 'validator'`
+
+### Existing Tools
+
+| ID | Name | Category |
+|----|------|----------|
+| `text-to-file` | Text to File | formatter |
+| `psql-to-json` | PSQL → JSON | converter |
+| `json-diff` | JSON Diff | formatter |
+| `sql-beautifier` | SQL Beautifier | formatter |
+| `cron-parser` | Cron Parser | formatter |
+| `base64` | Base64 | converter |
+| `csv-viewer` | CSV Viewer | formatter |
+| `string-size` | String Size | formatter |
+| `dedup-lines` | Dedup Lines | formatter |
+| `markdown-preview` | Markdown Preview | formatter |
+| `uuid-generator` | UUID Generator | generator |
+| `password-generator` | Password Generator | generator |
+| `date-utils` | Date Utils | converter |
+| `json-to-xlsx` | JSON → XLSX | converter |
+| `json-to-csv` | JSON → CSV | converter |
+| `csv-to-json` | CSV → JSON | converter |
+| `csv-to-xlsx` | CSV → XLSX | converter |
+| `xlsx-to-json` | XLSX → JSON | converter |
+| `xlsx-to-csv` | XLSX → CSV | converter |
+| `json-to-sql` | JSON → SQL | converter |
+| `cpf-generator` | CPF Generator | generator |
+| `cnpj-generator` | CNPJ Generator | generator |
+| `json-to-js-object` | JSON ↔ JS Object | converter |
+
 ### Routing
 
 `App.tsx` uses React Router v7 with two routes:
@@ -51,6 +85,11 @@ Each tool lives in `src/tools/<tool-id>/` and exports:
 Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `csvParser.worker.ts` — PapaParse for CSV parsing/generation
 - `xlsxParser.worker.ts` — SheetJS for XLSX operations
+- `base64.worker.ts` — Base64 encode/decode
+- `dedupLines.worker.ts` — Line deduplication
+- `jsonDiff.worker.ts` — JSON diffing
+- `psqlParser.worker.ts` — PostgreSQL output parsing
+- `sqlBeautifier.worker.ts` — SQL formatting
 
 `useWorker.ts` is the generic abstraction over the worker lifecycle. `useFileStream.ts` reads files in 2MB chunks to avoid blocking the UI.
 
@@ -63,7 +102,54 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `FileDropzone` + `usePageDrop` — Handles drag-and-drop at component and page level
 - `CodeEditor` — Textarea with syntax highlighting for JSON/text input
 - `OutputActions` — Standardized copy-to-clipboard + download buttons
+- `DownloadButton` — Single-purpose download button (`data`, `filename`, `mimeType` props)
+- `DataTable` — Virtualized table for tabular output (`headers`, `rows`, optional `maxHeight`)
 - `SearchModal` — Global ⌘K search over tool keywords
+- `Sidebar` — Navigation sidebar with category filter, favorites, dark/light toggle
+- `Toast` / `useToast` — In-app notification system; call `toast(message, 'success' | 'error' | 'info')`
+- `PageDropOverlay` — Full-page drag overlay (pair with `usePageDrop`)
+
+### Hooks
+
+- `useWorker` — Generic Web Worker lifecycle (post message, receive result, auto-terminate)
+- `useFileStream` — Chunked file reading (2 MB chunks, progress, speed, cancel)
+- `usePageDrop` — Page-level drag-and-drop with file type filtering
+- `useJsonFileInput` — Combined text/file input for JSON array tools; integrates `usePageDrop` + `parseJsonArray`
+- `useSubmitOnCmdEnter` — Binds Cmd/Ctrl+Enter to a callback; standard UX for all tools with a "run" action
+- `useCopyToClipboard` — Clipboard write with transient `copied` boolean state
+- `useFavorites` — Read/toggle tool favorites persisted in localStorage
+- `useCardOrder` — Drag-to-reorder home grid cards, persisted in localStorage
+- `storage` — Raw `loadJSON` / `saveJSON` helpers over localStorage
+
+### Utils
+
+- `compression.ts` — `compressToBase64url` / `decompressFromBase64url` using the browser's native `CompressionStream` (`deflate-raw`). Used to encode content into share URLs.
+- `urlShortener.ts` — `shortenUrl(url)` calls is.gd API; throws if URL exceeds 5 000 chars. `isLocalhost()` guard to skip shortening in dev.
+- `parseJson.ts` — `parseJsonArray(text)` safely parses a JSON string into `Record<string, unknown>[]`; returns `null` on error.
+- `fileAccept.ts` — `matchesAccept(file, accept)` checks a `File` against an `accept` string or array (extension or MIME).
+
+### URL-based Content Sharing Pattern
+
+Tools that need shareable links encode their content in the URL:
+1. Compress content with `compressToBase64url` → append as `?param=<encoded>`
+2. Optionally shorten the full URL via `shortenUrl` (is.gd, 5 000-char limit enforced before the API call)
+3. On load, read the param from `useSearchParams` and decompress with `decompressFromBase64url`
+
+See `markdown-preview` for a reference implementation.
+
+### Design System
+
+The project uses CSS custom properties defined in `src/index.css`. Always use these tokens — never hardcode colors or sizes.
+
+Key tokens:
+- `var(--bg)`, `var(--surface)`, `var(--surface-2)` — background layers
+- `var(--text)`, `var(--text-muted)`, `var(--text-dim)` — text hierarchy
+- `var(--border)` — borders
+- `var(--accent)` — primary accent color
+- `var(--radius)` — border radius
+- `var(--font-mono)` — monospace font stack
+
+Dark/light mode is controlled by the `data-theme` attribute on `<html>` (`"light"` or absent for dark). Use it when initializing third-party renderers (e.g. Mermaid).
 
 ### TypeScript Strictness
 
