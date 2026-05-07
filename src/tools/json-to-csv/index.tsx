@@ -97,7 +97,7 @@ export default function JsonToCsv() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Converter <kbd style={{ marginLeft: 4, fontSize: 10, padding: '1px 3px', border: '1px solid currentColor', borderRadius: 2, opacity: 0.55, fontFamily: 'var(--font-mono)' }}>⌘↵</kbd></button>
+        <button className="btn primary" onClick={convert}>Converter <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.55, fontFamily: 'var(--font-mono)', fontWeight: 400 }}>⌘↵</span></button>
         <OutputActions
           data={csvOutput}
           filename="output.csv"

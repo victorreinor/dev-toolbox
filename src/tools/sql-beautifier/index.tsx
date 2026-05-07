@@ -179,7 +179,7 @@ export default function SqlBeautifier() {
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn primary" onClick={format} disabled={processing}>
-          {processing ? 'Formatando…' : <>Formatar SQL <kbd style={{ marginLeft: 4, fontSize: 10, padding: '1px 3px', border: '1px solid currentColor', borderRadius: 2, opacity: 0.55, fontFamily: 'var(--font-mono)' }}>⌘↵</kbd></>}
+          {processing ? 'Formatando…' : <>Formatar SQL <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.55, fontFamily: 'var(--font-mono)', fontWeight: 400 }}>⌘↵</span></>}
         </button>
         <OutputActions
           data={output}

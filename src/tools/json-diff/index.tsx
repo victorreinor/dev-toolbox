@@ -170,7 +170,7 @@ export default function JsonDiff() {
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn primary" onClick={compare} disabled={processing}>
-          {processing ? 'Comparando…' : <>Comparar <kbd style={{ marginLeft: 4, fontSize: 10, padding: '1px 3px', border: '1px solid currentColor', borderRadius: 2, opacity: 0.55, fontFamily: 'var(--font-mono)' }}>⌘↵</kbd></>}
+          {processing ? 'Comparando…' : <>Comparar <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.55, fontFamily: 'var(--font-mono)', fontWeight: 400 }}>⌘↵</span></>}
         </button>
         <button className="btn" onClick={swap} title="Trocar A ↔ B" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <ArrowLeftRight size={13} />
