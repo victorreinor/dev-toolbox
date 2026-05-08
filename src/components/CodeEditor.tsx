@@ -33,7 +33,7 @@ export function CodeEditor({
   const highlightRef = useRef<HTMLDivElement>(null)
   const [currentLine, setCurrentLine] = useState(1)
   const [editorHeight, setEditorHeight] = useState(minHeight)
-  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
+  const dragRef = useRef<{ startY: number; startHeight: number; onMove: (ev: MouseEvent) => void; onUp: () => void } | null>(null)
 
   const { lineNumbers, lineNumberWidth } = useMemo(() => {
     const lines = value ? value.split('\n') : ['']
@@ -75,24 +75,33 @@ export function CodeEditor({
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
-    dragRef.current = { startY: e.clientY, startHeight: editorHeight }
 
-    const onMouseMove = (ev: MouseEvent) => {
+    const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return
       const delta = ev.clientY - dragRef.current.startY
       const next = Math.max(MIN_RESIZABLE_HEIGHT, dragRef.current.startHeight + delta)
       setEditorHeight(next)
     }
 
-    const onMouseUp = () => {
+    const onUp = () => {
       dragRef.current = null
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
     }
 
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
+    dragRef.current = { startY: e.clientY, startHeight: editorHeight, onMove, onUp }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
+
+  useEffect(() => {
+    return () => {
+      if (dragRef.current) {
+        window.removeEventListener('mousemove', dragRef.current.onMove)
+        window.removeEventListener('mouseup', dragRef.current.onUp)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     setEditorHeight(minHeight)
