@@ -73,7 +73,7 @@ export function CodeEditor({
   const flexFill = minHeight === 0
 
   const row = (
-    <div style={{ position: 'relative', display: 'flex', flex: flexFill ? 1 : undefined, minHeight: flexFill ? 0 : undefined, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', display: 'flex', flex: flexFill ? 1 : undefined, height: flexFill ? undefined : minHeight, minHeight: flexFill ? 0 : undefined, overflow: 'hidden' }}>
       <div
         ref={highlightRef}
         aria-hidden
@@ -136,7 +136,6 @@ export function CodeEditor({
           position: 'relative',
           zIndex: 1,
           flex: 1,
-          minHeight: flexFill ? undefined : minHeight,
           padding: `${PADDING_TOP}px 14px`,
           background: 'transparent',
           color: 'var(--text)',
@@ -145,7 +144,7 @@ export function CodeEditor({
           lineHeight: LINE_HEIGHT,
           border: 'none',
           outline: 'none',
-          resize: flexFill ? 'none' : 'vertical',
+          resize: 'none',
           overflowY: 'auto',
           overflowX: 'auto',
           cursor: readOnly ? 'text' : 'auto',
