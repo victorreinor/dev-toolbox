@@ -1,9 +1,10 @@
-import { useRef, useState, useMemo, useCallback } from 'react'
+import { useRef, useState, useMemo, useCallback, useEffect } from 'react'
 
 const FONT_SIZE = 12.5
 const LINE_HEIGHT = 1.6
 const LINE_HEIGHT_PX = FONT_SIZE * LINE_HEIGHT
 const PADDING_TOP = 12
+const MIN_RESIZABLE_HEIGHT = 80
 
 const highlightTop = (line: number, scrollTop: number) =>
   PADDING_TOP + (line - 1) * LINE_HEIGHT_PX - scrollTop
@@ -31,6 +32,8 @@ export function CodeEditor({
   const lineNumbersRef = useRef<HTMLDivElement>(null)
   const highlightRef = useRef<HTMLDivElement>(null)
   const [currentLine, setCurrentLine] = useState(1)
+  const [editorHeight, setEditorHeight] = useState(minHeight)
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
 
   const { lineNumbers, lineNumberWidth } = useMemo(() => {
     const lines = value ? value.split('\n') : ['']
@@ -70,10 +73,35 @@ export function CodeEditor({
     }
   }
 
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startY: e.clientY, startHeight: editorHeight }
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = ev.clientY - dragRef.current.startY
+      const next = Math.max(MIN_RESIZABLE_HEIGHT, dragRef.current.startHeight + delta)
+      setEditorHeight(next)
+    }
+
+    const onMouseUp = () => {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
+
+  useEffect(() => {
+    setEditorHeight(minHeight)
+  }, [minHeight])
+
   const flexFill = minHeight === 0
 
   const row = (
-    <div style={{ position: 'relative', display: 'flex', flex: flexFill ? 1 : undefined, height: flexFill ? undefined : minHeight, minHeight: flexFill ? 0 : undefined, overflow: 'hidden' }}>
+    <div style={{ position: 'relative', display: 'flex', flex: flexFill ? 1 : undefined, height: flexFill ? undefined : editorHeight, minHeight: flexFill ? 0 : undefined, overflow: 'hidden' }}>
       <div
         ref={highlightRef}
         aria-hidden
@@ -158,7 +186,18 @@ export function CodeEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {label && <span className="label">{label}</span>}
-      <div style={wrapStyle}>{row}</div>
+      <div style={wrapStyle}>
+        {row}
+        {!flexFill && (
+          <div
+            onMouseDown={handleResizeMouseDown}
+            style={resizeHandleStyle}
+            title="Arrastar para redimensionar"
+          >
+            <div style={resizeGripStyle} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -170,4 +209,22 @@ const wrapStyle: React.CSSProperties = {
   background: 'var(--surface)',
   transition: 'border-color var(--tr)',
   overflow: 'hidden',
+}
+
+const resizeHandleStyle: React.CSSProperties = {
+  height: 8,
+  cursor: 'ns-resize',
+  background: 'var(--surface-2)',
+  borderTop: '1px solid var(--border)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  userSelect: 'none',
+}
+
+const resizeGripStyle: React.CSSProperties = {
+  width: 32,
+  height: 2,
+  borderRadius: 2,
+  background: 'var(--border-2)',
 }
