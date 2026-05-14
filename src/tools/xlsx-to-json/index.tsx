@@ -11,7 +11,7 @@ import { useWorker } from '../../hooks/useWorker'
 
 interface WorkerResponse {
   ok: boolean
-  data?: unknown[]
+  sheets?: Record<string, unknown[]>
   sheetNames?: string[]
   error?: string
 }
@@ -19,8 +19,6 @@ interface WorkerResponse {
 export default function XlsxToJson() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
-  const [sheetNames, setSheetNames] = useState<string[]>([])
-  const [sheetIndex, setSheetIndex] = useState(0)
   const [header, setHeader] = useState(true)
   const [inferTypes, setInferTypes] = useState(true)
   const [jsonOutput, setJsonOutput] = useState('')
@@ -32,25 +30,36 @@ export default function XlsxToJson() {
       onMessage: (res) => {
         setProcessing(false)
         if (!res.ok) { toast(res.error || 'Erro ao processar', 'error'); return }
-        if (res.sheetNames) setSheetNames(res.sheetNames)
-        setJsonOutput(JSON.stringify(res.data, null, 2))
-        toast(`${res.data?.length ?? 0} linha(s) convertida(s)!`, 'success')
+
+        const sheetNames = res.sheetNames ?? []
+        const sheets = res.sheets ?? {}
+
+        if (sheetNames.length === 1) {
+          const data = sheets[sheetNames[0]] ?? []
+          setJsonOutput(JSON.stringify(data, null, 2))
+          toast(`${data.length} linha(s) convertida(s)!`, 'success')
+        } else {
+          const result: Record<string, unknown[]> = {}
+          for (const name of sheetNames) result[name] = sheets[name] ?? []
+          setJsonOutput(JSON.stringify(result, null, 2))
+          const total = Object.values(result).reduce((s, rows) => s + rows.length, 0)
+          toast(`${sheetNames.length} abas · ${total} linha(s) convertida(s)!`, 'success')
+        }
       },
       onError: () => { setProcessing(false); toast('Erro no worker', 'error') },
     }
   )
 
-  const postRead = async (f: File, idx: number) => {
+  const postRead = async (f: File) => {
     const buf = await f.arrayBuffer()
     setProcessing(true)
-    post({ type: 'read', buffer: buf, options: { sheetIndex: idx, header, inferTypes } })
+    post({ type: 'read', buffer: buf, options: { header, inferTypes } })
   }
 
   const handleFile = (f: File) => {
     setFile(f)
-    setSheetNames([])
     setJsonOutput('')
-    postRead(f, 0)
+    postRead(f)
   }
 
   const { draggingOver } = usePageDrop({ accept: ['.xlsx', '.xls'], onFile: handleFile })
@@ -64,17 +73,8 @@ export default function XlsxToJson() {
         onFile={handleFile}
         state={processing ? 'processing' : file ? 'done' : 'idle'}
         fileName={file?.name}
-        onClear={() => { setFile(null); setJsonOutput(''); setSheetNames([]) }}
+        onClear={() => { setFile(null); setJsonOutput('') }}
       />
-
-      {sheetNames.length > 1 && (
-        <div className="field">
-          <label className="label">Aba da planilha</label>
-          <select className="select" value={sheetIndex} onChange={e => setSheetIndex(Number(e.target.value))}>
-            {sheetNames.map((n, i) => <option key={n} value={i}>{n}</option>)}
-          </select>
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <label className="checkbox-label">
@@ -86,7 +86,7 @@ export default function XlsxToJson() {
           Inferir tipos
         </label>
         {file && (
-          <button className="btn" onClick={() => postRead(file, sheetIndex)} disabled={processing}>
+          <button className="btn" onClick={() => postRead(file)} disabled={processing}>
             {processing && <span className="spinner" />}
             {processing ? 'Processando…' : 'Reaplicar opções'}
           </button>

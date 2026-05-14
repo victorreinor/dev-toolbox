@@ -4,7 +4,6 @@ interface ReadRequest {
   type: 'read'
   buffer: ArrayBuffer
   options: {
-    sheetIndex: number
     header: boolean
     inferTypes: boolean
   }
@@ -38,16 +37,17 @@ self.onmessage = (e: MessageEvent<Request>) => {
     try {
       const wb = XLSX.read(req.buffer, { type: 'array' })
       const sheetNames = wb.SheetNames
-      const sheetName = sheetNames[req.options.sheetIndex] || sheetNames[0]
-      const ws = wb.Sheets[sheetName]
 
-      const data = XLSX.utils.sheet_to_json(ws, {
-        header: req.options.header ? undefined : 1,
-        defval: '',
-        raw: req.options.inferTypes,
-      })
+      const sheets: Record<string, unknown[]> = {}
+      for (const name of sheetNames) {
+        sheets[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], {
+          header: req.options.header ? undefined : 1,
+          defval: '',
+          raw: req.options.inferTypes,
+        })
+      }
 
-      self.postMessage({ ok: true, data, sheetNames })
+      self.postMessage({ ok: true, sheets, sheetNames })
     } catch (err) {
       self.postMessage({ ok: false, error: String(err) })
     }
