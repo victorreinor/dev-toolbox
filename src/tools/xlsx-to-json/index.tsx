@@ -16,9 +16,28 @@ interface WorkerResponse {
   error?: string
 }
 
+function buildOutput(
+  sheets: Record<string, unknown[]>,
+  names: string[],
+  exportAll: boolean,
+  idx: number,
+): string {
+  if (names.length === 1 || exportAll) {
+    if (names.length === 1) return JSON.stringify(sheets[names[0]], null, 2)
+    const result: Record<string, unknown[]> = {}
+    for (const name of names) result[name] = sheets[name]
+    return JSON.stringify(result, null, 2)
+  }
+  return JSON.stringify(sheets[names[idx]] ?? [], null, 2)
+}
+
 export default function XlsxToJson() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
+  const [rawSheets, setRawSheets] = useState<Record<string, unknown[]> | null>(null)
+  const [sheetNames, setSheetNames] = useState<string[]>([])
+  const [exportAll, setExportAll] = useState(true)
+  const [selectedSheetIndex, setSelectedSheetIndex] = useState(0)
   const [header, setHeader] = useState(true)
   const [inferTypes, setInferTypes] = useState(true)
   const [jsonOutput, setJsonOutput] = useState('')
@@ -31,20 +50,19 @@ export default function XlsxToJson() {
         setProcessing(false)
         if (!res.ok) { toast(res.error || 'Erro ao processar', 'error'); return }
 
-        const sheetNames = res.sheetNames ?? []
+        const names = res.sheetNames ?? []
         const sheets = res.sheets ?? {}
+        const all = names.length > 1
 
-        if (sheetNames.length === 1) {
-          const data = sheets[sheetNames[0]] ?? []
-          setJsonOutput(JSON.stringify(data, null, 2))
-          toast(`${data.length} linha(s) convertida(s)!`, 'success')
-        } else {
-          const result: Record<string, unknown[]> = {}
-          for (const name of sheetNames) result[name] = sheets[name] ?? []
-          setJsonOutput(JSON.stringify(result, null, 2))
-          const total = Object.values(result).reduce((s, rows) => s + rows.length, 0)
-          toast(`${sheetNames.length} abas · ${total} linha(s) convertida(s)!`, 'success')
-        }
+        setRawSheets(sheets)
+        setSheetNames(names)
+        setExportAll(all)
+        setSelectedSheetIndex(0)
+        setJsonOutput(buildOutput(sheets, names, all, 0))
+
+        const total = Object.values(sheets).reduce((s, rows) => s + rows.length, 0)
+        const label = names.length > 1 ? `${names.length} abas · ${total} linha(s)` : `${total} linha(s)`
+        toast(`${label} convertida(s)!`, 'success')
       },
       onError: () => { setProcessing(false); toast('Erro no worker', 'error') },
     }
@@ -58,8 +76,20 @@ export default function XlsxToJson() {
 
   const handleFile = (f: File) => {
     setFile(f)
+    setRawSheets(null)
+    setSheetNames([])
     setJsonOutput('')
     postRead(f)
+  }
+
+  const handleExportAll = (checked: boolean) => {
+    setExportAll(checked)
+    if (rawSheets) setJsonOutput(buildOutput(rawSheets, sheetNames, checked, selectedSheetIndex))
+  }
+
+  const handleSheetChange = (idx: number) => {
+    setSelectedSheetIndex(idx)
+    if (rawSheets) setJsonOutput(buildOutput(rawSheets, sheetNames, exportAll, idx))
   }
 
   const { draggingOver } = usePageDrop({ accept: ['.xlsx', '.xls'], onFile: handleFile })
@@ -73,7 +103,7 @@ export default function XlsxToJson() {
         onFile={handleFile}
         state={processing ? 'processing' : file ? 'done' : 'idle'}
         fileName={file?.name}
-        onClear={() => { setFile(null); setJsonOutput('') }}
+        onClear={() => { setFile(null); setRawSheets(null); setSheetNames([]); setJsonOutput('') }}
       />
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -85,6 +115,12 @@ export default function XlsxToJson() {
           <input type="checkbox" checked={inferTypes} onChange={e => setInferTypes(e.target.checked)} />
           Inferir tipos
         </label>
+        {sheetNames.length > 1 && (
+          <label className="checkbox-label">
+            <input type="checkbox" checked={exportAll} onChange={e => handleExportAll(e.target.checked)} />
+            Exportar todas as abas
+          </label>
+        )}
         {file && (
           <button className="btn" onClick={() => postRead(file)} disabled={processing}>
             {processing && <span className="spinner" />}
@@ -92,6 +128,19 @@ export default function XlsxToJson() {
           </button>
         )}
       </div>
+
+      {sheetNames.length > 1 && !exportAll && (
+        <div className="field">
+          <label className="label">Aba da planilha</label>
+          <select
+            className="select"
+            value={selectedSheetIndex}
+            onChange={e => handleSheetChange(Number(e.target.value))}
+          >
+            {sheetNames.map((n, i) => <option key={n} value={i}>{n}</option>)}
+          </select>
+        </div>
+      )}
 
       {jsonOutput && (
         <>
