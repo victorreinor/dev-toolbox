@@ -9,6 +9,8 @@ import csvToXlsx from './tools/csv-to-xlsx/meta'
 import jsonToSql from './tools/json-to-sql/meta'
 import cpfGenerator from './tools/cpf-generator/meta'
 import cnpjGenerator from './tools/cnpj-generator/meta'
+import personGenerator from './tools/person-generator/meta'
+import companyGenerator from './tools/company-generator/meta'
 import jsonToJsObject from './tools/json-to-js-object/meta'
 import markdownPreview from './tools/markdown-preview/meta'
 import uuidGenerator from './tools/uuid-generator/meta'
@@ -46,6 +48,8 @@ export const registry: ToolMeta[] = [
   jsonToSql,
   cpfGenerator,
   cnpjGenerator,
+  personGenerator,
+  companyGenerator,
   jsonToJsObject,
 ]
 
