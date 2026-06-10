@@ -15,6 +15,7 @@ DevUtils is a pack of everyday tools for developers — fast, local, and non-blo
 3. **File reading → `useFileStream.ts`.** Read files in 2 MB chunks; never load the entire binary into memory at once.
 4. **UI stays responsive.** Progress indicators must be shown while a worker is running. The user should never experience a frozen tab.
 5. **No server round-trips.** All processing is client-side. No data leaves the device.
+6. **Large output → serialize in the worker, not the main thread.** `JSON.stringify` of a big dataset produces a 100MB+ string; doing it in `onMessage` freezes the UI. Stringify inside the worker and return a `Blob` + a short text preview (see `workers/lib/jsonPreview.ts` → `buildJsonOutput`). Blobs cross `postMessage` by reference (cheap); the full string never reaches the UI thread. Never feed a file-scale string into `CodeEditor` — render the preview and download the Blob via `JsonOutputPanel`.
 
 ## Commands
 
@@ -104,6 +105,7 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `OutputActions` — Standardized copy-to-clipboard + download buttons
 - `DownloadButton` — Single-purpose download button (`data`, `filename`, `mimeType` props)
 - `DataTable` — Virtualized table for tabular output (`headers`, `rows`, optional `maxHeight`)
+- `JsonOutputPanel` — Output panel for file-scale "→ JSON" tools: short preview in `CodeEditor` + download full result via Blob (copy hidden above ~2MB)
 - `SearchModal` — Global ⌘K search over tool keywords
 - `Sidebar` — Navigation sidebar with category filter, favorites, dark/light toggle
 - `Toast` / `useToast` — In-app notification system; call `toast(message, 'success' | 'error' | 'info')`
@@ -127,6 +129,7 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `urlShortener.ts` — `shortenUrl(url)` calls is.gd API; throws if URL exceeds 5 000 chars. `isLocalhost()` guard to skip shortening in dev.
 - `parseJson.ts` — `parseJsonArray(text)` safely parses a JSON string into `Record<string, unknown>[]`; returns `null` on error.
 - `fileAccept.ts` — `matchesAccept(file, accept)` checks a `File` against an `accept` string or array (extension or MIME).
+- `workers/lib/jsonPreview.ts` — `buildJsonOutput(value)`: stringify + Blob + capped preview, run **inside** workers (not main-thread). Pairs with `JsonOutputPanel`.
 
 ### URL-based Content Sharing Pattern
 
