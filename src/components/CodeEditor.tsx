@@ -5,6 +5,16 @@ const LINE_HEIGHT = 1.6
 const LINE_HEIGHT_PX = FONT_SIZE * LINE_HEIGHT
 const PADDING_TOP = 12
 const MIN_RESIZABLE_HEIGHT = 80
+// Safety cap: never render more than this many line-number nodes. Rendering one
+// <div> per line for a multi-million-line value freezes/crashes the tab. Large
+// outputs should be passed as a preview, but this guards every caller regardless.
+const MAX_GUTTER_LINES = 5000
+
+function countLines(s: string): number {
+  let n = 1
+  for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 10) n++
+  return n
+}
 
 const highlightTop = (line: number, scrollTop: number) =>
   PADDING_TOP + (line - 1) * LINE_HEIGHT_PX - scrollTop
@@ -36,10 +46,11 @@ export function CodeEditor({
   const dragRef = useRef<{ startY: number; startHeight: number; onMove: (ev: MouseEvent) => void; onUp: () => void } | null>(null)
 
   const { lineNumbers, lineNumberWidth } = useMemo(() => {
-    const lines = value ? value.split('\n') : ['']
+    const total = value ? countLines(value) : 1
+    const shown = Math.min(total, MAX_GUTTER_LINES)
     return {
-      lineNumbers: lines.map((_, i) => i + 1),
-      lineNumberWidth: `${String(lines.length).length * 8 + 24}px`,
+      lineNumbers: Array.from({ length: shown }, (_, i) => i + 1),
+      lineNumberWidth: `${String(total).length * 8 + 24}px`,
     }
   }, [value])
 

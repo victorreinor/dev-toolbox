@@ -2,14 +2,29 @@ import { useState, useRef, useCallback } from 'react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
-import { OutputActions } from '../../components/OutputActions'
+import { JsonOutputPanel } from '../../components/JsonOutputPanel'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { usePageDrop } from '../../hooks/usePageDrop'
+import { useWorker } from '../../hooks/useWorker'
 import { DELIMITERS_WITH_AUTO } from '../../constants/delimiters'
-import Papa from 'papaparse'
 
 type InputMode = 'file' | 'text'
+
+interface WorkerRequest {
+  type: 'parseToJson'
+  text: string
+  options: { header: boolean; inferTypes: boolean; delimiter: string }
+}
+
+interface WorkerResponse {
+  ok: boolean
+  blob?: Blob
+  preview?: string
+  previewTruncated?: boolean
+  rowCount?: number
+  error?: string
+}
 
 export default function CsvToJson() {
   const { toast } = useToast()
@@ -20,14 +35,32 @@ export default function CsvToJson() {
   const [delimiter, setDelimiter] = useState('')
   const [header, setHeader] = useState(true)
   const [inferTypes, setInferTypes] = useState(true)
-  const [jsonOutput, setJsonOutput] = useState('')
+  const [blob, setBlob] = useState<Blob | null>(null)
+  const [preview, setPreview] = useState('')
+  const [previewTruncated, setPreviewTruncated] = useState(false)
+  const [processing, setProcessing] = useState(false)
+
+  const { post } = useWorker<WorkerRequest, WorkerResponse>(
+    () => new Worker(new URL('../../workers/csvParser.worker.ts', import.meta.url), { type: 'module' }),
+    {
+      onMessage: (res) => {
+        setProcessing(false)
+        if (!res.ok) { toast(res.error ?? 'Erro ao processar', 'error'); return }
+        setBlob(res.blob ?? null)
+        setPreview(res.preview ?? '')
+        setPreviewTruncated(res.previewTruncated ?? false)
+        toast(`${res.rowCount ?? 0} linha(s) convertida(s)!`, 'success')
+      },
+      onError: () => { setProcessing(false); toast('Erro inesperado no worker', 'error') },
+    }
+  )
 
   const handleFile = useCallback((f: File) => {
     setMode('file')
     setFile(f)
-    setJsonOutput('')
+    setBlob(null)
+    setPreview('')
     fileTextCache.current = null
-    // Cache file content eagerly so convert() doesn't re-read on every click
     f.text().then(t => { fileTextCache.current = t })
   }, [])
 
@@ -44,14 +77,16 @@ export default function CsvToJson() {
     }
     if (!text.trim()) { toast('Nenhum dado para converter', 'error'); return }
 
-    const result = Papa.parse(text, {
-      header,
-      delimiter: delimiter || undefined,
-      dynamicTyping: inferTypes,
-      skipEmptyLines: true,
-    })
-    setJsonOutput(JSON.stringify(result.data, null, 2))
-    toast(`${result.data.length} linha(s) convertida(s)!`, 'success')
+    setBlob(null)
+    setPreview('')
+    setProcessing(true)
+    post({ type: 'parseToJson', text, options: { header, inferTypes, delimiter } })
+  }
+
+  const clear = () => {
+    setBlob(null)
+    setPreview('')
+    if (mode === 'text') setCsvText('')
   }
 
   return (
@@ -79,9 +114,9 @@ export default function CsvToJson() {
           accept=".csv,.txt"
           hint=".csv ou .txt · até 500MB"
           onFile={handleFile}
-          state={file ? 'done' : 'idle'}
+          state={processing ? 'processing' : file ? 'done' : 'idle'}
           fileName={file?.name}
-          onClear={() => { setFile(null); fileTextCache.current = null; setJsonOutput('') }}
+          onClear={() => { setFile(null); fileTextCache.current = null; setBlob(null); setPreview('') }}
         />
       )}
 
@@ -103,16 +138,19 @@ export default function CsvToJson() {
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="btn primary" onClick={convert}>Converter</button>
-        <OutputActions
-          data={jsonOutput}
-          filename="output.json"
-          mimeType="application/json"
-          onClear={() => setJsonOutput('')}
-        />
+        <button className="btn primary" onClick={convert} disabled={processing}>
+          {processing && <span className="spinner" />}
+          {processing ? 'Convertendo…' : 'Converter'}
+        </button>
       </div>
 
-      {jsonOutput && <CodeEditor value={jsonOutput} readOnly label="JSON" minHeight={220} />}
+      <JsonOutputPanel
+        preview={preview}
+        previewTruncated={previewTruncated}
+        blob={blob}
+        filename="output.json"
+        onClear={clear}
+      />
     </ToolLayout>
   )
 }

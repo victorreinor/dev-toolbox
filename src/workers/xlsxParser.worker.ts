@@ -1,12 +1,25 @@
 import * as XLSX from 'xlsx'
+import { buildJsonOutput } from './lib/jsonPreview'
 
+interface ReadOptions {
+  header: boolean
+  inferTypes: boolean
+  exportAll: boolean
+  sheetIndex: number
+}
+
+// First read of a file: parse the workbook and build the JSON output.
 interface ReadRequest {
   type: 'read'
   buffer: ArrayBuffer
-  options: {
-    header: boolean
-    inferTypes: boolean
-  }
+  options: ReadOptions
+}
+
+// Re-run with new options without re-sending/re-unzipping the file: reuse the
+// workbook cached from the last `read`.
+interface RebuildRequest {
+  type: 'rebuild'
+  options: ReadOptions
 }
 
 interface WriteXLSXRequest {
@@ -28,26 +41,62 @@ interface WriteCSVRequest {
   }
 }
 
-type Request = ReadRequest | WriteXLSXRequest | WriteCSVRequest
+type Request = ReadRequest | RebuildRequest | WriteXLSXRequest | WriteCSVRequest
+
+// Workbook from the last `read`, kept so option toggles don't re-send 20MB+ over
+// postMessage nor re-unzip the file.
+let cachedWb: XLSX.WorkBook | null = null
+
+function buildAndPost(wb: XLSX.WorkBook, options: ReadOptions) {
+  const names = wb.SheetNames
+  const parse = (name: string) =>
+    XLSX.utils.sheet_to_json(wb.Sheets[name], {
+      header: options.header ? undefined : 1,
+      defval: '',
+      raw: options.inferTypes,
+    })
+
+  let value: unknown
+  let rowCount: number
+  if (names.length === 1) {
+    const data = parse(names[0])
+    value = data
+    rowCount = data.length
+  } else if (options.exportAll) {
+    const result: Record<string, unknown[]> = {}
+    rowCount = 0
+    for (const name of names) {
+      const data = parse(name)
+      result[name] = data
+      rowCount += data.length
+    }
+    value = result
+  } else {
+    const data = parse(names[options.sheetIndex] ?? names[0])
+    value = data
+    rowCount = data.length
+  }
+
+  const out = buildJsonOutput(value)
+  self.postMessage({ ok: true, ...out, sheetNames: names, rowCount })
+}
 
 self.onmessage = (e: MessageEvent<Request>) => {
   const req = e.data
 
   if (req.type === 'read') {
     try {
-      const wb = XLSX.read(req.buffer, { type: 'array' })
-      const sheetNames = wb.SheetNames
+      cachedWb = XLSX.read(req.buffer, { type: 'array' })
+      buildAndPost(cachedWb, req.options)
+    } catch (err) {
+      self.postMessage({ ok: false, error: String(err) })
+    }
+  }
 
-      const sheets: Record<string, unknown[]> = {}
-      for (const name of sheetNames) {
-        sheets[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], {
-          header: req.options.header ? undefined : 1,
-          defval: '',
-          raw: req.options.inferTypes,
-        })
-      }
-
-      self.postMessage({ ok: true, sheets, sheetNames })
+  if (req.type === 'rebuild') {
+    try {
+      if (!cachedWb) { self.postMessage({ ok: false, error: 'Nenhuma planilha carregada' }); return }
+      buildAndPost(cachedWb, req.options)
     } catch (err) {
       self.postMessage({ ok: false, error: String(err) })
     }

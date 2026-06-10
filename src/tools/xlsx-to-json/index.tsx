@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
-import { CodeEditor } from '../../components/CodeEditor'
-import { OutputActions } from '../../components/OutputActions'
+import { JsonOutputPanel } from '../../components/JsonOutputPanel'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { usePageDrop } from '../../hooks/usePageDrop'
@@ -11,37 +10,34 @@ import { useWorker } from '../../hooks/useWorker'
 
 interface WorkerResponse {
   ok: boolean
-  sheets?: Record<string, unknown[]>
+  blob?: Blob
+  preview?: string
+  previewTruncated?: boolean
   sheetNames?: string[]
+  rowCount?: number
   error?: string
 }
 
-function buildOutput(
-  sheets: Record<string, unknown[]>,
-  names: string[],
-  exportAll: boolean,
-  idx: number,
-): string {
-  if (names.length === 1 || exportAll) {
-    if (names.length === 1) return JSON.stringify(sheets[names[0]], null, 2)
-    const result: Record<string, unknown[]> = {}
-    for (const name of names) result[name] = sheets[name]
-    return JSON.stringify(result, null, 2)
-  }
-  return JSON.stringify(sheets[names[idx]] ?? [], null, 2)
+interface ReadOptions {
+  header: boolean
+  inferTypes: boolean
+  exportAll: boolean
+  sheetIndex: number
 }
 
 export default function XlsxToJson() {
   const { toast } = useToast()
   const [file, setFile] = useState<File | null>(null)
-  const [rawSheets, setRawSheets] = useState<Record<string, unknown[]> | null>(null)
   const [sheetNames, setSheetNames] = useState<string[]>([])
   const [exportAll, setExportAll] = useState(true)
   const [selectedSheetIndex, setSelectedSheetIndex] = useState(0)
   const [header, setHeader] = useState(true)
   const [inferTypes, setInferTypes] = useState(true)
-  const [jsonOutput, setJsonOutput] = useState('')
+  const [blob, setBlob] = useState<Blob | null>(null)
+  const [preview, setPreview] = useState('')
+  const [previewTruncated, setPreviewTruncated] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const hasWorkbook = useRef(false)
 
   const { post } = useWorker<unknown, WorkerResponse>(
     () => new XlsxWorker(),
@@ -51,45 +47,71 @@ export default function XlsxToJson() {
         if (!res.ok) { toast(res.error || 'Erro ao processar', 'error'); return }
 
         const names = res.sheetNames ?? []
-        const sheets = res.sheets ?? {}
-        const all = names.length > 1
+        if (!hasWorkbook.current) {
+          // First successful read: default to "export all" only when multi-sheet.
+          setSheetNames(names)
+          setExportAll(names.length > 1)
+          setSelectedSheetIndex(0)
+          hasWorkbook.current = true
+        }
 
-        setRawSheets(sheets)
-        setSheetNames(names)
-        setExportAll(all)
-        setSelectedSheetIndex(0)
-        setJsonOutput(buildOutput(sheets, names, all, 0))
-
-        const total = Object.values(sheets).reduce((s, rows) => s + rows.length, 0)
-        const label = names.length > 1 ? `${names.length} abas · ${total} linha(s)` : `${total} linha(s)`
-        toast(`${label} convertida(s)!`, 'success')
+        setBlob(res.blob ?? null)
+        setPreview(res.preview ?? '')
+        setPreviewTruncated(res.previewTruncated ?? false)
+        toast(`${res.rowCount ?? 0} linha(s) convertida(s)!`, 'success')
       },
       onError: () => { setProcessing(false); toast('Erro no worker', 'error') },
     }
   )
 
-  const postRead = async (f: File) => {
-    const buf = await f.arrayBuffer()
+  const currentOptions = (over?: Partial<ReadOptions>): ReadOptions => ({
+    header, inferTypes, exportAll, sheetIndex: selectedSheetIndex, ...over,
+  })
+
+  const handleFile = async (f: File) => {
+    setFile(f)
+    setBlob(null)
+    setPreview('')
+    setSheetNames([])
+    hasWorkbook.current = false
+    const buffer = await f.arrayBuffer()
     setProcessing(true)
-    post({ type: 'read', buffer: buf, options: { header, inferTypes } })
+    post({ type: 'read', buffer, options: currentOptions() })
   }
 
-  const handleFile = (f: File) => {
-    setFile(f)
-    setRawSheets(null)
-    setSheetNames([])
-    setJsonOutput('')
-    postRead(f)
+  // Re-run with new options; the worker reuses the cached workbook (no re-upload).
+  const rebuild = (over?: Partial<ReadOptions>) => {
+    if (!hasWorkbook.current) return
+    setProcessing(true)
+    post({ type: 'rebuild', options: currentOptions(over) })
   }
 
   const handleExportAll = (checked: boolean) => {
     setExportAll(checked)
-    if (rawSheets) setJsonOutput(buildOutput(rawSheets, sheetNames, checked, selectedSheetIndex))
+    rebuild({ exportAll: checked })
   }
 
   const handleSheetChange = (idx: number) => {
     setSelectedSheetIndex(idx)
-    if (rawSheets) setJsonOutput(buildOutput(rawSheets, sheetNames, exportAll, idx))
+    rebuild({ sheetIndex: idx })
+  }
+
+  const handleHeader = (checked: boolean) => {
+    setHeader(checked)
+    rebuild({ header: checked })
+  }
+
+  const handleInferTypes = (checked: boolean) => {
+    setInferTypes(checked)
+    rebuild({ inferTypes: checked })
+  }
+
+  const clear = () => {
+    setFile(null)
+    setBlob(null)
+    setPreview('')
+    setSheetNames([])
+    hasWorkbook.current = false
   }
 
   const { draggingOver } = usePageDrop({ accept: ['.xlsx', '.xls'], onFile: handleFile })
@@ -103,30 +125,25 @@ export default function XlsxToJson() {
         onFile={handleFile}
         state={processing ? 'processing' : file ? 'done' : 'idle'}
         fileName={file?.name}
-        onClear={() => { setFile(null); setRawSheets(null); setSheetNames([]); setJsonOutput('') }}
+        onClear={clear}
       />
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <label className="checkbox-label">
-          <input type="checkbox" checked={header} onChange={e => setHeader(e.target.checked)} />
+          <input type="checkbox" checked={header} disabled={processing} onChange={e => handleHeader(e.target.checked)} />
           Usar primeira linha como header
         </label>
         <label className="checkbox-label">
-          <input type="checkbox" checked={inferTypes} onChange={e => setInferTypes(e.target.checked)} />
+          <input type="checkbox" checked={inferTypes} disabled={processing} onChange={e => handleInferTypes(e.target.checked)} />
           Inferir tipos
         </label>
         {sheetNames.length > 1 && (
           <label className="checkbox-label">
-            <input type="checkbox" checked={exportAll} onChange={e => handleExportAll(e.target.checked)} />
+            <input type="checkbox" checked={exportAll} disabled={processing} onChange={e => handleExportAll(e.target.checked)} />
             Exportar todas as abas
           </label>
         )}
-        {file && (
-          <button className="btn" onClick={() => postRead(file)} disabled={processing}>
-            {processing && <span className="spinner" />}
-            {processing ? 'Processando…' : 'Reaplicar opções'}
-          </button>
-        )}
+        {processing && <span className="spinner" />}
       </div>
 
       {sheetNames.length > 1 && !exportAll && (
@@ -135,6 +152,7 @@ export default function XlsxToJson() {
           <select
             className="select"
             value={selectedSheetIndex}
+            disabled={processing}
             onChange={e => handleSheetChange(Number(e.target.value))}
           >
             {sheetNames.map((n, i) => <option key={n} value={i}>{n}</option>)}
@@ -142,14 +160,13 @@ export default function XlsxToJson() {
         </div>
       )}
 
-      {jsonOutput && (
-        <>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <OutputActions data={jsonOutput} filename="output.json" mimeType="application/json" />
-          </div>
-          <CodeEditor value={jsonOutput} readOnly label="JSON" minHeight={240} />
-        </>
-      )}
+      <JsonOutputPanel
+        preview={preview}
+        previewTruncated={previewTruncated}
+        blob={blob}
+        filename="output.json"
+        onClear={clear}
+      />
     </ToolLayout>
   )
 }

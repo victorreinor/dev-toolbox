@@ -1,7 +1,21 @@
 import Papa from 'papaparse'
+import { buildJsonOutput } from './lib/jsonPreview'
 
 interface ParseRequest {
   type: 'parse'
+  text: string
+  options: {
+    header: boolean
+    inferTypes: boolean
+    delimiter: string
+  }
+}
+
+// Like `parse`, but stringifies to JSON inside the worker and returns a Blob +
+// preview instead of the parsed array — keeps a file-scale JSON string off the
+// main thread.
+interface ParseToJsonRequest {
+  type: 'parseToJson'
   text: string
   options: {
     header: boolean
@@ -20,7 +34,7 @@ interface ConvertRequest {
   }
 }
 
-type Request = ParseRequest | ConvertRequest
+type Request = ParseRequest | ParseToJsonRequest | ConvertRequest
 
 self.onmessage = (e: MessageEvent<Request>) => {
   const req = e.data
@@ -35,6 +49,22 @@ self.onmessage = (e: MessageEvent<Request>) => {
       })
 
       self.postMessage({ ok: true, data: result.data, meta: result.meta })
+    } catch (err) {
+      self.postMessage({ ok: false, error: String(err) })
+    }
+  }
+
+  if (req.type === 'parseToJson') {
+    try {
+      const result = Papa.parse(req.text, {
+        header: req.options.header,
+        delimiter: req.options.delimiter || undefined,
+        dynamicTyping: req.options.inferTypes,
+        skipEmptyLines: true,
+      })
+
+      const out = buildJsonOutput(result.data)
+      self.postMessage({ ok: true, ...out, rowCount: result.data.length })
     } catch (err) {
       self.postMessage({ ok: false, error: String(err) })
     }
