@@ -15,7 +15,7 @@ DevUtils is a pack of everyday tools for developers — fast, local, and non-blo
 3. **File reading → `useFileStream.ts`.** Read files in 2 MB chunks; never load the entire binary into memory at once.
 4. **UI stays responsive.** Progress indicators must be shown while a worker is running. The user should never experience a frozen tab.
 5. **No server round-trips.** All processing is client-side. No data leaves the device.
-6. **Large output → serialize in the worker, not the main thread.** `JSON.stringify` of a big dataset produces a 100MB+ string; doing it in `onMessage` freezes the UI. Stringify inside the worker and return a `Blob` + a short text preview (see `workers/lib/jsonPreview.ts` → `buildJsonOutput`). Blobs cross `postMessage` by reference (cheap); the full string never reaches the UI thread. Never feed a file-scale string into `CodeEditor` — render the preview and download the Blob via `JsonOutputPanel`.
+6. **Large output → serialize in the worker, not the main thread.** `JSON.stringify` (or a big SQL string concat) of a large dataset produces a 100MB+ string; doing it in `onMessage` freezes the UI. Build the string inside the worker and return a `Blob` + a short text preview (see `workers/lib/textOutput.ts` → `buildTextOutput`, and `workers/lib/jsonPreview.ts` → `buildJsonOutput` for the JSON case). Blobs cross `postMessage` by reference (cheap); the full string never reaches the UI thread. Never feed a file-scale string into `CodeEditor` — render the preview and download the Blob via `BlobOutputPanel`.
 
 ## Commands
 
@@ -41,7 +41,7 @@ Never add `Co-Authored-By` trailers to commits in this repository.
 Each tool lives in `src/tools/<tool-id>/` and exports:
 - `meta.ts` — `ToolMeta` object with id, name, description, category, icon, keywords, and a `lazy()` component reference
 - `index.tsx` — The React UI component
-- `processor.ts` (optional) — Pure logic (used in generators and json-to-sql)
+- `processor.ts` (optional) — Pure logic (used in generators)
 
 `src/registry.ts` aggregates all `ToolMeta` objects and exports `getToolById()` and `searchTools()`. Adding a new tool requires creating the module and registering it in `registry.ts`.
 
@@ -71,6 +71,7 @@ Tool categories (`ToolCategory` type): `'converter' | 'generator' | 'formatter' 
 | `xlsx-to-json` | XLSX → JSON | converter |
 | `xlsx-to-csv` | XLSX → CSV | converter |
 | `json-to-sql` | JSON → SQL | converter |
+| `xlsx-to-sql` | XLSX → SQL | converter |
 | `cpf-generator` | CPF Generator | generator |
 | `cnpj-generator` | CNPJ Generator | generator |
 | `json-to-js-object` | JSON ↔ JS Object | converter |
@@ -91,6 +92,7 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `jsonDiff.worker.ts` — JSON diffing
 - `psqlParser.worker.ts` — PostgreSQL output parsing
 - `sqlBeautifier.worker.ts` — SQL formatting
+- `xlsxToSql.worker.ts` — XLSX → SQL (sheet inspection + statement generation)
 
 `useWorker.ts` is the generic abstraction over the worker lifecycle. `useFileStream.ts` reads files in 2MB chunks to avoid blocking the UI.
 
@@ -105,7 +107,7 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `OutputActions` — Standardized copy-to-clipboard + download buttons
 - `DownloadButton` — Single-purpose download button (`data`, `filename`, `mimeType` props)
 - `DataTable` — Virtualized table for tabular output (`headers`, `rows`, optional `maxHeight`)
-- `JsonOutputPanel` — Output panel for file-scale "→ JSON" tools: short preview in `CodeEditor` + download full result via Blob (copy hidden above ~2MB)
+- `BlobOutputPanel` — Output panel for file-scale results (JSON, SQL, …): short preview in `CodeEditor` + download full result via Blob (copy hidden above ~2MB)
 - `SearchModal` — Global ⌘K search over tool keywords
 - `Sidebar` — Navigation sidebar with category filter, favorites, dark/light toggle
 - `Toast` / `useToast` — In-app notification system; call `toast(message, 'success' | 'error' | 'info')`
@@ -129,7 +131,9 @@ Heavy processing is offloaded to Web Workers (`src/workers/`):
 - `urlShortener.ts` — `shortenUrl(url)` calls is.gd API; throws if URL exceeds 5 000 chars. `isLocalhost()` guard to skip shortening in dev.
 - `parseJson.ts` — `parseJsonArray(text)` safely parses a JSON string into `Record<string, unknown>[]`; returns `null` on error.
 - `fileAccept.ts` — `matchesAccept(file, accept)` checks a `File` against an `accept` string or array (extension or MIME).
-- `workers/lib/jsonPreview.ts` — `buildJsonOutput(value)`: stringify + Blob + capped preview, run **inside** workers (not main-thread). Pairs with `JsonOutputPanel`.
+- `sqlGenerator.ts` — `generateSQL(rows, opts)` (INSERT/UPDATE/UPSERT/DELETE for mysql/postgres/sqlite/mssql), `generateCreateTable(rows, opts)` (DDL with type inference) and `wrapInTransaction`. Shared by `json-to-sql` (main thread) and `xlsxToSql.worker`.
+- `workers/lib/textOutput.ts` — `buildTextOutput(text, mimeType)`: Blob + capped preview, run **inside** workers (not main-thread). Pairs with `BlobOutputPanel`.
+- `workers/lib/jsonPreview.ts` — `buildJsonOutput(value)`: `JSON.stringify` + `buildTextOutput`.
 
 ### URL-based Content Sharing Pattern
 

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { ToolLayout } from '../../components/ToolLayout'
 import { FileDropzone } from '../../components/FileDropzone'
 import { CodeEditor } from '../../components/CodeEditor'
-import { JsonOutputPanel } from '../../components/JsonOutputPanel'
+import { BlobOutputPanel } from '../../components/BlobOutputPanel'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { usePageDrop } from '../../hooks/usePageDrop'
@@ -144,7 +144,7 @@ export default function CsvToJson() {
         </button>
       </div>
 
-      <JsonOutputPanel
+      <BlobOutputPanel
         preview={preview}
         previewTruncated={previewTruncated}
         blob={blob}

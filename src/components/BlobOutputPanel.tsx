@@ -8,7 +8,7 @@ import { useToast } from './Toast'
 // so for large outputs we hide Copy and steer the user to Download instead.
 const COPY_LIMIT_BYTES = 2 * 1024 * 1024
 
-interface JsonOutputPanelProps {
+interface BlobOutputPanelProps {
   preview: string
   previewTruncated: boolean
   blob: Blob | null
@@ -18,21 +18,21 @@ interface JsonOutputPanelProps {
 }
 
 /**
- * Output panel for "→ JSON" tools whose result can be file-scale.
+ * Output panel for tools whose result can be file-scale (JSON, SQL, …).
  *
- * The full JSON string never lives on the main thread: the worker hands us a Blob
- * (downloaded directly) plus a small text preview (the only thing shown in the
+ * The full output string never lives on the main thread: the worker hands us a Blob
+ * (downloaded directly) plus a short text preview (the only thing shown in the
  * editor). This keeps both the giant-string copy and the line-by-line DOM render
  * off the UI thread.
  */
-export function JsonOutputPanel({
+export function BlobOutputPanel({
   preview,
   previewTruncated,
   blob,
   filename,
   label = 'JSON',
   onClear,
-}: JsonOutputPanelProps) {
+}: BlobOutputPanelProps) {
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
 
@@ -59,7 +59,7 @@ export function JsonOutputPanel({
             {copied ? 'Copiado!' : 'Copiar'}
           </button>
         )}
-        <DownloadButton data={blob} filename={filename} mimeType="application/json" />
+        <DownloadButton data={blob} filename={filename} />
         {onClear && <button className="btn ghost" onClick={onClear}>Limpar</button>}
       </div>
 

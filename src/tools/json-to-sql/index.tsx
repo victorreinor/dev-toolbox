@@ -7,7 +7,7 @@ import { OutputActions } from '../../components/OutputActions'
 import { PageDropOverlay } from '../../components/PageDropOverlay'
 import { useToast } from '../../components/Toast'
 import { useJsonFileInput } from '../../hooks/useJsonFileInput'
-import { generateSQL, type SqlDialect, type SqlOperation } from './processor'
+import { generateSQL, type SqlDialect, type SqlOperation } from '../../utils/sqlGenerator'
 
 const OPERATIONS: SqlOperation[] = ['INSERT', 'UPDATE', 'UPSERT', 'DELETE']
 const DIALECTS: { label: string; value: SqlDialect }[] = [

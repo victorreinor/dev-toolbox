@@ -7,6 +7,7 @@ import xlsxToJson from './tools/xlsx-to-json/meta'
 import xlsxToCsv from './tools/xlsx-to-csv/meta'
 import csvToXlsx from './tools/csv-to-xlsx/meta'
 import jsonToSql from './tools/json-to-sql/meta'
+import xlsxToSql from './tools/xlsx-to-sql/meta'
 import cpfGenerator from './tools/cpf-generator/meta'
 import cnpjGenerator from './tools/cnpj-generator/meta'
 import personGenerator from './tools/person-generator/meta'
@@ -46,6 +47,7 @@ export const registry: ToolMeta[] = [
   xlsxToJson,
   xlsxToCsv,
   jsonToSql,
+  xlsxToSql,
   cpfGenerator,
   cnpjGenerator,
   personGenerator,
